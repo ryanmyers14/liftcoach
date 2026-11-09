@@ -932,3 +932,18 @@ button {
   background: var(--surface);
   color: var(--text);
 }
+
+.import-confirm {
+  margin: 14px 0 0;
+}
+
+.import-confirm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.import-confirm-buttons .btn-primary {
+  width: auto;
+  padding: 0 20px;
+}

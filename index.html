@@ -91,6 +91,13 @@
       <button id="import-data" type="button" class="btn-link">Import data</button>
       <input id="import-file" type="file" accept="application/json,.json" hidden>
     </p>
+    <div id="import-confirm" class="card import-confirm" hidden>
+      <p id="import-confirm-text"></p>
+      <div class="import-confirm-buttons">
+        <button id="import-confirm-yes" type="button" class="btn-primary">Replace my data</button>
+        <button id="import-confirm-no" type="button" class="btn-secondary">Cancel</button>
+      </div>
+    </div>
     <p id="backup-message" class="form-message setup-footer" aria-live="polite"></p>
     </div>
   </main>

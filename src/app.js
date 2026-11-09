@@ -47,6 +47,9 @@ const exportButton = document.getElementById("export-data");
 const importButton = document.getElementById("import-data");
 const importFile = document.getElementById("import-file");
 const backupMessage = document.getElementById("backup-message");
+const importConfirm = document.getElementById("import-confirm");
+const importConfirmText = document.getElementById("import-confirm-text");
+let pendingImport = null;
 
 let allSets = [];
 let profile = null;
@@ -101,7 +104,8 @@ function exportData() {
   }
 }
 
-// Replaces everything saved on this device with a chosen backup file, after asking first.
+// Reads a chosen backup file and, if it is a good one, asks on the page before replacing anything.
+// (A pop-up question would be silently refused by some browsers, which looked like "No".)
 async function importData(file) {
   try {
     const result = parseBackup(await file.text());
@@ -110,15 +114,31 @@ async function importData(file) {
       return;
     }
     const madeOn = result.exportedAt === null ? "" : ` made on ${result.exportedAt.slice(0, 10)}`;
-    if (!window.confirm(`Replace everything saved on this device with the backup${madeOn}? Your current sets, goals, and setup will be overwritten.`)) {
-      showBackupMessage("Import cancelled. Nothing was changed.", false);
-      return;
-    }
-    applyBackup(localStorage, result.data);
+    pendingImport = result.data;
+    importConfirmText.textContent = `Replace everything saved on this device with the backup${madeOn}? Your current sets, goals, and setup will be overwritten.`;
+    importConfirm.hidden = false;
+    showBackupMessage("", false);
+  } catch {
+    showBackupMessage("Could not load that file. Check that it is a LiftCoach backup.", true);
+  }
+}
+
+function cancelImport() {
+  pendingImport = null;
+  importConfirm.hidden = true;
+  showBackupMessage("Import cancelled. Nothing was changed.", false);
+}
+
+function confirmImport() {
+  const data = pendingImport;
+  pendingImport = null;
+  importConfirm.hidden = true;
+  try {
+    applyBackup(localStorage, data);
     sessionStorage.setItem(BACKUP_LOADED_KEY, "1");
     location.reload();
   } catch {
-    showBackupMessage("Could not load that file. Check that it is a LiftCoach backup.", true);
+    showBackupMessage("Could not save the backup on this device. Your browser may be blocking storage.", true);
   }
 }
 
@@ -1313,6 +1333,8 @@ function start() {
       importData(file);
     }
   });
+  document.getElementById("import-confirm-yes").addEventListener("click", confirmImport);
+  document.getElementById("import-confirm-no").addEventListener("click", cancelImport);
   showBackupLoadedNotice();
 
   if (profile === null) {
