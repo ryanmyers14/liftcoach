@@ -7,6 +7,7 @@ import { RECOVERY_CHECKLIST, alternateStretchesFor, muscleRecovery, nextWorkout,
 import { extendedEnd, formatClock, restEnd, secondsLeft } from "./rest.js";
 import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
+import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
 import { setupThemeToggle } from "./theme.js";
 import { tutorialFor } from "./tutorials.js";
 import { generalWarmup, warmupSets } from "./warmup.js";
@@ -20,6 +21,7 @@ if ("serviceWorker" in navigator) {
 
 setupThemeToggle(document.getElementById("theme-toggle"));
 
+const BACKUP_LOADED_KEY = "liftcoach_backup_loaded";
 const MAX_WEIGHT = 1500;
 const MAX_REPS_PER_SET = 100;
 
@@ -41,6 +43,10 @@ const trackerSection = document.getElementById("tracker");
 const restTimerCard = document.getElementById("rest-timer");
 const workoutCard = document.getElementById("workout");
 const setupButton = document.getElementById("open-setup");
+const exportButton = document.getElementById("export-data");
+const importButton = document.getElementById("import-data");
+const importFile = document.getElementById("import-file");
+const backupMessage = document.getElementById("backup-message");
 
 let allSets = [];
 let profile = null;
@@ -66,6 +72,66 @@ let openAlternateKey = null;
 function showStorageError(error) {
   storageError.textContent = error.message;
   storageError.hidden = false;
+}
+
+function showBackupMessage(text, isError) {
+  backupMessage.textContent = text;
+  backupMessage.classList.toggle("error", isError);
+}
+
+// Saves everything the app has stored in this browser as a file in the downloads folder.
+function exportData() {
+  try {
+    const backup = buildBackup(localStorage, new Date().toISOString());
+    if (Object.keys(backup.data).length === 0) {
+      showBackupMessage("There is nothing to export yet. Log a set first.", true);
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = backupFileName(todayString());
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showBackupMessage("Backup saved to your downloads. Keep the file somewhere safe.", false);
+  } catch {
+    showBackupMessage("Could not make a backup. Your browser may be blocking storage.", true);
+  }
+}
+
+// Replaces everything saved on this device with a chosen backup file, after asking first.
+async function importData(file) {
+  try {
+    const result = parseBackup(await file.text());
+    if (!result.ok) {
+      showBackupMessage(result.message, true);
+      return;
+    }
+    const madeOn = result.exportedAt === null ? "" : ` made on ${result.exportedAt.slice(0, 10)}`;
+    if (!window.confirm(`Replace everything saved on this device with the backup${madeOn}? Your current sets, goals, and setup will be overwritten.`)) {
+      showBackupMessage("Import cancelled. Nothing was changed.", false);
+      return;
+    }
+    applyBackup(localStorage, result.data);
+    sessionStorage.setItem(BACKUP_LOADED_KEY, "1");
+    location.reload();
+  } catch {
+    showBackupMessage("Could not load that file. Check that it is a LiftCoach backup.", true);
+  }
+}
+
+// The page reloads after an import, so the confirmation is passed along through the session.
+function showBackupLoadedNotice() {
+  try {
+    if (sessionStorage.getItem(BACKUP_LOADED_KEY) === "1") {
+      sessionStorage.removeItem(BACKUP_LOADED_KEY);
+      showBackupMessage("Backup loaded. Your sets, goals, and setup are back.", false);
+    }
+  } catch {
+    // Without session storage the page just does not show the notice.
+  }
 }
 
 function currentExercise() {
@@ -1238,6 +1304,16 @@ function start() {
   buildRestTimerCard();
   setForm.addEventListener("submit", handleSubmit);
   setupButton.addEventListener("click", openQuiz);
+  exportButton.addEventListener("click", exportData);
+  importButton.addEventListener("click", () => importFile.click());
+  importFile.addEventListener("change", () => {
+    const [file] = importFile.files;
+    importFile.value = "";
+    if (file !== undefined) {
+      importData(file);
+    }
+  });
+  showBackupLoadedNotice();
 
   if (profile === null) {
     openQuiz();
