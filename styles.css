@@ -1,0 +1,934 @@
+:root {
+  --bg: #f2f0ea;
+  --surface: #ffffff;
+  --line: #d8d2c0;
+  --text: #201f1c;
+  --text-muted: #6b6459;
+  --accent: #b8721e;
+  --accent-ink: #ffffff;
+  --accent-soft: #eedec0;
+  --danger: #a3402f;
+  --danger-soft: #ebd4cd;
+  --ok: #3f6b4a;
+  --focus: #2b6cb0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1b19;
+    --surface: #242320;
+    --line: #3b392f;
+    --text: #f2efe6;
+    --text-muted: #a79e8c;
+    --accent: #d99a3e;
+    --accent-ink: #1b1b19;
+    --accent-soft: #3a3020;
+    --danger: #d9705b;
+    --danger-soft: #3b2621;
+    --ok: #7fb489;
+    --focus: #6fa8dc;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1b1b19;
+  --surface: #242320;
+  --line: #3b392f;
+  --text: #f2efe6;
+  --text-muted: #a79e8c;
+  --accent: #d99a3e;
+  --accent-ink: #1b1b19;
+  --accent-soft: #3a3020;
+  --danger: #d9705b;
+  --danger-soft: #3b2621;
+  --ok: #7fb489;
+  --focus: #6fa8dc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Tells the browser which theme the page is in, so its own parts (scrollbars, dropdown menus,
+   the area around the page) change with the Light/Dark button instead of staying as they were. */
+:root {
+  color-scheme: light dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 20px 16px 60px;
+}
+
+h1,
+h2 {
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+
+.brand {
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+  border-bottom: 2px solid var(--text);
+}
+
+.brand h1 {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.brand h1 span {
+  color: var(--accent);
+}
+
+.brand p {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+h2 {
+  font-size: 17px;
+  margin-bottom: 12px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.banner {
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  font-size: 14px;
+}
+
+.banner-error {
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+  color: var(--text);
+}
+
+.field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+/* 16px+ text keeps iPhone Safari from zooming in when a field is focused. */
+.text-input {
+  width: 100%;
+  font: inherit;
+  font-size: 18px;
+  padding: 12px;
+  min-height: 48px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.text-input:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-message {
+  min-height: 22px;
+  margin: 10px 0 8px;
+  font-size: 14px;
+  color: var(--ok);
+}
+
+.form-message.error {
+  color: var(--danger);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.btn-primary {
+  width: 100%;
+  min-height: 52px;
+  font-size: 17px;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.rest-timer {
+  position: sticky;
+  top: 8px;
+  z-index: 10;
+  border-left: 5px solid var(--accent);
+  background: var(--accent-soft);
+}
+
+.rest-timer.rest-done {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.rest-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rest-clock {
+  margin: 4px 0 12px;
+  font-size: 32px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rest-done .rest-clock {
+  font-size: 20px;
+}
+
+.rest-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.coach {
+  border-left: 5px solid var(--accent);
+  background: var(--accent-soft);
+}
+
+.coach-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  margin: 0 0 4px;
+}
+
+.coach-target {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.coach-reason {
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+
+.set-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.set-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 17px;
+}
+
+.set-item:last-child {
+  border-bottom: none;
+}
+
+.set-item small {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-left: 6px;
+}
+
+.btn-delete {
+  min-width: 48px;
+  min-height: 44px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.btn-link {
+  min-height: 44px;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 15px;
+  text-decoration: underline;
+}
+
+.quiz-step {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+}
+
+.quiz-question {
+  margin: 0 0 14px;
+}
+
+.choices {
+  display: grid;
+  gap: 10px;
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  text-align: left;
+}
+
+.choice.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.choice-label {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.choice-detail {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.quiz-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.quiz-weights .field-label {
+  margin-top: 12px;
+}
+
+.weight-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 10px;
+}
+
+.program-list,
+.workout-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+}
+
+.program-day {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.program-day span {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.workout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.workout-head h2 {
+  margin: 0;
+}
+
+.day-select {
+  font: inherit;
+  font-size: 16px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.workout-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  text-align: left;
+}
+
+.alternate-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: -2px 0 10px;
+}
+
+.alternate-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.btn-alternate {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.alternate-select {
+  flex: 1;
+  min-width: 160px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 1.5px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+}
+
+.workout-item.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.workout-name {
+  font-weight: 700;
+}
+
+.workout-target {
+  font-size: 14px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.last-time {
+  margin: -2px 0 8px;
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.day-warmup {
+  margin-bottom: 12px;
+  padding: 4px 12px 8px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+}
+
+.day-warmup .tutorial-list {
+  font-size: 15px;
+}
+
+.day-warmup summary,
+.tutorial summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tutorial h3 {
+  margin: 12px 0 4px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+}
+
+.tutorial-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.tutorial-list li {
+  margin-bottom: 6px;
+}
+
+.tutorial-video {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  margin-top: 14px;
+  border: 1.5px solid var(--accent);
+  border-radius: 8px;
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.body-views {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.body-views figure {
+  margin: 0;
+  text-align: center;
+}
+
+.body-views figcaption {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.body-view {
+  width: 140px;
+  height: auto;
+}
+
+.body-part {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.body-none {
+  fill: var(--bg);
+}
+
+.body-helper {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+}
+
+.body-main {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+
+.body-legend {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 15px;
+}
+
+.coach-extra {
+  color: var(--text-muted);
+}
+
+.muscle-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.muscle-bars li {
+  display: grid;
+  grid-template-columns: 90px 1fr 60px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.muscle-bars li > span:last-child {
+  text-align: right;
+  color: var(--text-muted);
+}
+
+.muscle-track {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.muscle-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.goal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.goal-row {
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.goal-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+.goal-step {
+  min-width: 44px;
+  padding: 0;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.goal-title {
+  flex: 1;
+  text-align: center;
+}
+
+.goal-title strong,
+.goal-title span {
+  display: block;
+}
+
+.goal-title span {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.goal-waiting {
+  margin: 8px 0 0;
+}
+
+.goal-chart {
+  display: block;
+  width: 100%;
+  margin: 6px 0 4px;
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.chart-dot {
+  fill: var(--accent);
+}
+
+.chart-goal-line {
+  stroke: var(--ok);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.chart-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+.chart-goal-label {
+  fill: var(--ok);
+}
+
+.goal-status {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.goal-reached {
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.goal-editor {
+  margin-top: 8px;
+}
+
+.goal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.goal-actions .btn-primary {
+  width: auto;
+  padding: 0 20px;
+}
+
+.setup-footer {
+  text-align: center;
+  margin: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.max-day {
+  border-color: var(--accent);
+}
+
+.recovery-intro {
+  margin: 0 0 6px;
+}
+
+.recovery-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recovery-chips li {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.chip-rest {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.chip-fresh {
+  background: var(--accent-soft);
+  color: var(--ok);
+}
+
+.recovery-checklist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recovery-checklist label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.recovery-checklist input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+/* Section colors: each main block has its own color so the parts are easy to tell apart. */
+:root {
+  --log-bg: #e6f1fb;
+  --log-edge: #185fa5;
+  --log-ink: #0c447c;
+  --log-btn-ink: #ffffff;
+  --coach-bg: #faeeda;
+  --coach-edge: #854f0b;
+  --coach-ink: #633806;
+  --sets-bg: #eaf3de;
+  --sets-edge: #3b6d11;
+  --sets-ink: #27500a;
+  --goals-bg: #eeedfe;
+  --goals-edge: #534ab7;
+  --goals-ink: #3c3489;
+  --goals-btn-ink: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --log-bg: #0c447c;
+    --log-edge: #85b7eb;
+    --log-ink: #b5d4f4;
+    --log-btn-ink: #042c53;
+    --coach-bg: #633806;
+    --coach-edge: #ef9f27;
+    --coach-ink: #fac775;
+    --sets-bg: #27500a;
+    --sets-edge: #97c459;
+    --sets-ink: #c0dd97;
+    --goals-bg: #3c3489;
+    --goals-edge: #afa9ec;
+    --goals-ink: #cecbf6;
+    --goals-btn-ink: #26215c;
+  }
+}
+
+:root[data-theme="dark"] {
+  --log-bg: #0c447c;
+  --log-edge: #85b7eb;
+  --log-ink: #b5d4f4;
+  --log-btn-ink: #042c53;
+  --coach-bg: #633806;
+  --coach-edge: #ef9f27;
+  --coach-ink: #fac775;
+  --sets-bg: #27500a;
+  --sets-edge: #97c459;
+  --sets-ink: #c0dd97;
+  --goals-bg: #3c3489;
+  --goals-edge: #afa9ec;
+  --goals-ink: #cecbf6;
+  --goals-btn-ink: #26215c;
+}
+
+#set-form {
+  background: var(--log-bg);
+  border-color: var(--log-edge);
+}
+
+#set-form h2 {
+  color: var(--log-ink);
+}
+
+#set-form .btn-primary {
+  background: var(--log-edge);
+  color: var(--log-btn-ink);
+}
+
+#coach {
+  background: var(--coach-bg);
+  border-color: var(--coach-edge);
+  border-left-width: 5px;
+}
+
+#coach .coach-label {
+  color: var(--coach-ink);
+}
+
+#today {
+  background: var(--sets-bg);
+  border-color: var(--sets-edge);
+}
+
+#today h2 {
+  color: var(--sets-ink);
+}
+
+#today .set-item {
+  border-bottom-color: color-mix(in srgb, var(--sets-edge) 40%, transparent);
+}
+
+#goals {
+  background: var(--goals-bg);
+  border-color: var(--goals-edge);
+}
+
+#goals h2,
+#goals h3 {
+  color: var(--goals-ink);
+}
+
+#goals .btn-primary {
+  background: var(--goals-edge);
+  color: var(--goals-btn-ink);
+}
+
+#set-form .text-input,
+#goals .text-input {
+  background: var(--surface);
+}
+
+.brand {
+  position: relative;
+}
+
+.theme-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
