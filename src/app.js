@@ -2,14 +2,14 @@ import { chartPoints, goalRows, weightHistory } from "./goals.js";
 import { lastSession, lastTimeText, suggestNext } from "./coach.js";
 import { MAX_LIFTS, estimatedMax, isMaxLift, latestMax, maxIsDue, maxRampSets, withNewMax } from "./maxes.js";
 import { MUSCLES, alternatesFor, repRangeFor, restFor, swapState, tempoFor } from "./exercises.js";
-import { buildProgram, startDayIndex, startingWeights, suggestedDayIndex, weeklyMuscleSets, withDefaults } from "./program.js";
-import { RECOVERY_CHECKLIST, alternateStretchesFor, muscleRecovery, nextWorkout, previousWorkout, recoveryStepDates, stretchNamed, stretchesFor, withRecoveryDays } from "./recovery.js";
+import { buildProgram, startDayIndex, startingWeights, weeklyMuscleSets, withDefaults } from "./program.js";
+import { RECOVERY_CHECKLIST, alternateStretchesFor, muscleRecovery, previousWorkout, stretchNamed, stretchesFor, withRecoveryDays } from "./recovery.js";
 import { extendedEnd, formatClock, restEnd, secondsLeft } from "./rest.js";
 import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
 import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
-import { plannedDayIndex } from "./calendar.js";
 import { setupCalendar } from "./calendar-view.js";
+import { isTrainingDate, plannedWorkoutIndex, trainingDaysFor, workoutSlotFor } from "./schedule.js";
 import { setupThemeToggle } from "./theme.js";
 import { tutorialFor } from "./tutorials.js";
 import { generalWarmup, warmupSets } from "./warmup.js";
@@ -56,6 +56,8 @@ let pendingImport = null;
 let allSets = [];
 let profile = null;
 let program = [];
+let workoutPositions = []; // where each training day sits in `program`; recovery entries are left out
+let trainingDays = [];
 let startWeightsByExercise = {};
 let selectedDayIndex = 0;
 let shownTutorialName = null;
@@ -445,7 +447,7 @@ function renderWorkout() {
   head.append(heading, select);
 
   if (program[selectedDayIndex].recovery) {
-    workoutCard.append(head, renderSkipRow(), renderRecovery());
+    workoutCard.append(head, ...(skipNotice === null ? [] : [renderSkipRow()]), renderRecovery());
     return;
   }
 
@@ -505,8 +507,8 @@ function toggleRecoveryCheck(id) {
 
 // The off-day card: what your last workout hit, a checklist for the day, and a stretch for each sore muscle.
 function renderRecovery() {
-  const last = previousWorkout(program, selectedDayIndex);
-  const next = nextWorkout(program, selectedDayIndex);
+  const last = allSets.length === 0 ? null : previousWorkout(program, rotationIndex());
+  const next = program[rotationIndex()];
   const { worked, fresh } = muscleRecovery(last);
 
   const card = document.createElement("div");
@@ -1168,26 +1170,33 @@ function buildRestTimerCard() {
   restTimerCard.append(restLabel, restClock, buttons);
 }
 
-// The day the program is on: one step per day trained, skipped, or spent on recovery since setup.
+// Today's workout, as a position in `program`: the one for today's weekday, or on a rest weekday the
+// workout for the next training day. Recovery days are not part of this; they fall on rest weekdays.
 function rotationIndex() {
-  const skippedDates = skips.map((skip) => skip.date);
-  const trainingDates = [...allSets.map((set) => set.date), ...recoveryStepDates(recoveryDates, skippedDates)];
-  return suggestedDayIndex(program.length, trainingDates, profile.setupDate, todayString(), skippedDates);
+  return workoutPositions[workoutSlotFor(todayString(), trainingDays) % workoutPositions.length];
 }
 
-// The program day planned for a future date (the rotation, one step per day), or null with no program.
+// The day to open on: the Recovery card on a rest weekday you have not trained on, the day a skip moved
+// to today, or else the rotation's workout.
+function openingDayIndex() {
+  const today = todayString();
+  const usedToday = allSets.some((set) => set.date === today) || skips.some((skip) => skip.date === today);
+  if (!isTrainingDate(today, trainingDays) && !usedToday) {
+    return Math.max(0, program.findIndex((day) => day.recovery));
+  }
+  return startDayIndex(skips, today, rotationIndex());
+}
+
+const REST_DAY = { name: "Rest", recovery: true, exercises: [] };
+
+// The program day planned for a date: its workout on a training weekday, or a rest day.
+// Null when there is no program.
 function plannedDay(date) {
   if (program.length === 0) {
     return null;
   }
-  const skippedDates = skips.map((skip) => skip.date);
-  const trainingDates = [...allSets.map((set) => set.date), ...recoveryStepDates(recoveryDates, skippedDates)];
-  return program[plannedDayIndex(program.length, trainingDates, profile.setupDate, todayString(), skippedDates, date)];
-}
-
-// The day to open on: the one a skip moved to today, or else the rotation's day.
-function openingDayIndex() {
-  return startDayIndex(skips, todayString(), rotationIndex());
+  const step = plannedWorkoutIndex({ workoutCount: workoutPositions.length, trainingDays, date });
+  return step === null ? REST_DAY : program[workoutPositions[step]];
 }
 
 function persistSkips(nextSkips) {
@@ -1200,14 +1209,14 @@ function persistSkips(nextSkips) {
   skips = nextSkips;
 }
 
-// Dropping a day moves the rotation on to the next one; the skipped workout does not come back.
+// Dropping a workout turns today into a recovery day; the skipped workout does not come back.
 function skipToday() {
   const from = selectedDayIndex;
   const skippedName = program[from].name;
-  const next = (from + 1) % program.length;
+  const next = Math.max(0, program.findIndex((day) => day.recovery));
   persistSkips([...skips, { date: todayString(), from, next }]);
   selectedDayIndex = next;
-  skipNotice = `Skipped ${skippedName}. Next up: ${program[selectedDayIndex].name}.`;
+  skipNotice = `Skipped ${skippedName}. Today is a recovery day.`;
   render();
 }
 
@@ -1234,7 +1243,7 @@ function renderSkipRow() {
     undo.addEventListener("click", undoSkip);
     row.append(undo);
   }
-  if (!trainedToday) {
+  if (!trainedToday && !program[selectedDayIndex].recovery) {
     const skip = document.createElement("button");
     skip.type = "button";
     skip.className = "btn-alternate";
@@ -1245,10 +1254,10 @@ function renderSkipRow() {
   return row;
 }
 
-// Opening the app on a recovery day uses that day up, so tomorrow the rotation moves on.
+// Opening the app on a recovery day is remembered, so the calendar can mark it.
 function rememberRecoveryDay() {
   const today = todayString();
-  if (!program[rotationIndex()].recovery || recoveryDates.includes(today)) {
+  if (!program[selectedDayIndex].recovery || recoveryDates.includes(today)) {
     return;
   }
   const next = [...recoveryDates, today];
@@ -1266,6 +1275,8 @@ function applyProfile() {
   }
   const hasProgram = profile !== null && !profile.skipped;
   program = hasProgram ? withRecoveryDays(buildProgram(profile)) : [];
+  workoutPositions = program.flatMap((day, index) => (day.recovery ? [] : [index]));
+  trainingDays = hasProgram ? trainingDaysFor(profile) : [];
   startWeightsByExercise = {};
   if (hasProgram) {
     for (const [exercise, start] of Object.entries(startingWeights(profile))) {

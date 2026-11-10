@@ -11,6 +11,7 @@ import {
   QUIZ_LIFTS,
   SESSION_LENGTHS,
 } from "./program.js";
+import { WEEKDAYS, weekdayNames } from "./schedule.js";
 import { todayString } from "./storage.js";
 
 const MAX_QUIZ_WEIGHT = 1500;
@@ -75,6 +76,7 @@ export function startQuiz(container, { onDone, onSkip }) {
   const answers = {
     experience: null,
     daysPerWeek: null,
+    trainingDays: [],
     sessionMinutes: null,
     goal: null,
     equipment: null,
@@ -187,6 +189,35 @@ export function startQuiz(container, { onDone, onSkip }) {
     );
   }
 
+  // Which weekdays to train on: pick 2 to 6. The number picked sets the length of the program.
+  function weekdayStep() {
+    const list = element("div", "choices");
+    for (const weekday of WEEKDAYS) {
+      const button = choiceButton(weekday.label, "", answers.trainingDays.includes(weekday.key), () => {
+        const selected = !answers.trainingDays.includes(weekday.key);
+        answers.trainingDays = selected ? [...answers.trainingDays, weekday.key] : answers.trainingDays.filter((key) => key !== weekday.key);
+        button.classList.toggle("selected", selected);
+        button.setAttribute("aria-pressed", String(selected));
+        message.textContent = "";
+      });
+      button.setAttribute("aria-pressed", String(answers.trainingDays.includes(weekday.key)));
+      list.append(button);
+    }
+    const message = element("p", "form-message error");
+    message.setAttribute("aria-live", "polite");
+    const next = element("button", "btn-primary", "Next");
+    next.type = "button";
+    next.addEventListener("click", () => {
+      if (answers.trainingDays.length < MIN_DAYS || answers.trainingDays.length > MAX_DAYS) {
+        message.textContent = `Pick between ${MIN_DAYS} and ${MAX_DAYS} days.`;
+        return;
+      }
+      answers.daysPerWeek = answers.trainingDays.length;
+      go(step + 1);
+    });
+    show(...header("Your schedule", "Which days of the week do you train?"), list, message, next, footer());
+  }
+
   function injuriesStep() {
     const list = element("div", "choices");
     for (const area of INJURY_AREAS) {
@@ -249,12 +280,7 @@ export function startQuiz(container, { onDone, onSkip }) {
     const finish = element("button", "btn-primary", "Start training");
     finish.type = "button";
     finish.addEventListener("click", () => onDone({ ...answers, setupDate: todayString() }));
-    show(...header("Your week", `Here is a ${answers.daysPerWeek}-day program built from your answers.`), list, finish, footer());
-  }
-
-  const dayOptions = [];
-  for (let days = MIN_DAYS; days <= MAX_DAYS; days += 1) {
-    dayOptions.push({ key: days, label: `${days} days` });
+    show(...header("Your week", `Here is a ${answers.daysPerWeek}-day program for ${weekdayNames(answers.trainingDays)}, built from your answers.`), list, finish, footer());
   }
 
   steps.push(
@@ -265,7 +291,7 @@ export function startQuiz(container, { onDone, onSkip }) {
       field: "experience",
       extra: () => textButton("Skip setup, I'll just log sets", onSkip),
     }),
-    singleChoiceStep({ title: "Your schedule", question: "How many days a week can you train?", options: dayOptions, field: "daysPerWeek" }),
+    weekdayStep,
     singleChoiceStep({ title: "Session length", question: "How long can a workout be?", options: SESSION_LENGTHS, field: "sessionMinutes" }),
     singleChoiceStep({ title: "Your goal", question: "What matters most right now?", options: GOALS, field: "goal" }),
     singleChoiceStep({ title: "Equipment", question: "What do you have to train with?", options: EQUIPMENT, field: "equipment" }),

@@ -277,16 +277,6 @@ export function startDayIndex(skips, today, rotationIndex) {
   return skipsToday.length === 0 ? rotationIndex : skipsToday[skipsToday.length - 1].next;
 }
 
-// Which day of the program to suggest: one step further for each earlier day you trained since setup,
-// and one more for every day you skipped (skippedDates has one entry per skip, today's included).
-// A saved setup from before start dates were recorded has none, so everything counts.
-export function suggestedDayIndex(programLength, trainingDates, setupDate, today, skippedDates = []) {
-  const start = setupDate ?? "";
-  const earlierDays = new Set(trainingDates.filter((date) => date >= start && date < today));
-  const skips = skippedDates.filter((date) => date >= start).length;
-  return (earlierDays.size + skips) % programLength;
-}
-
 // Counts weekly sets for each muscle an exercise mainly trains. Returns { Chest: 10, ... } for muscles with sets.
 export function weeklyMuscleSets(program) {
   const totals = {};

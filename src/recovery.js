@@ -83,23 +83,15 @@ export function withRecoveryDays(program) {
   return program.flatMap((day, index) => (restAfter.has(index) ? [day, { name: "Recovery", recovery: true, exercises: [] }] : [day]));
 }
 
-// The nearest training day before (direction -1) or after (direction 1) a day, wrapping around the program.
-function neighborWorkout(program, index, direction) {
+// The nearest training day before a day, skipping recovery days and wrapping around the program.
+export function previousWorkout(program, index) {
   for (let step = 1; step < program.length; step += 1) {
-    const day = program[(((index + direction * step) % program.length) + program.length) % program.length];
+    const day = program[(((index - step) % program.length) + program.length) % program.length];
     if (!isRecoveryDay(day)) {
       return day;
     }
   }
   return null;
-}
-
-export function previousWorkout(program, index) {
-  return neighborWorkout(program, index, -1);
-}
-
-export function nextWorkout(program, index) {
-  return neighborWorkout(program, index, 1);
 }
 
 // Splits the muscles into those a workout hit (so they need rest) and the ones it left fresh.
@@ -123,10 +115,4 @@ export function alternateStretchesFor(stretchName) {
 // The stretch with this name, or null if there is none.
 export function stretchNamed(name) {
   return Object.values(STRETCHES).flat().find((stretch) => stretch.name === name) ?? null;
-}
-
-// Recovery days you opened count as a step in the rotation, like a day you trained. A day you
-// skipped already counts through the skip, so it is left out here to avoid counting it twice.
-export function recoveryStepDates(recoveryDates, skippedDates) {
-  return recoveryDates.filter((date) => !skippedDates.includes(date));
 }

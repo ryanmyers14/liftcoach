@@ -1,8 +1,6 @@
 // The logic behind the Calendar: which dates fill a month, and what happened on each day.
 // Dates are "YYYY-MM-DD" strings, the same form the rest of the app saves. Months are 1 to 12.
 
-import { suggestedDayIndex } from "./program.js";
-
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
@@ -62,24 +60,4 @@ export function setsOnDate(sets, date) {
     group.sets.push({ weight: set.weight, reps: set.reps });
   }
   return groups;
-}
-
-// The date n days after (or before, if n is negative) a "YYYY-MM-DD" date.
-export function addDays(date, n) {
-  const [year, month, day] = date.split("-").map(Number);
-  const moved = new Date(year, month - 1, day + n);
-  return `${moved.getFullYear()}-${pad(moved.getMonth() + 1)}-${pad(moved.getDate())}`;
-}
-
-// Which day of the program a future date lands on, assuming you follow the rotation one step per day.
-// Today counts as a step whether or not you have logged it yet, so the plan does not change when you do;
-// after that it carries on from the days you really trained, skipped, or rested (the same rule the app
-// uses to pick each day's workout). date must be after today.
-export function plannedDayIndex(programLength, trainingDates, setupDate, today, skippedDates, date) {
-  const tomorrow = addDays(today, 1);
-  const todayIsAStep = trainingDates.includes(today) || skippedDates.includes(today);
-  const datesCounted = todayIsAStep ? trainingDates : [...trainingDates, today];
-  const tomorrowIndex = suggestedDayIndex(programLength, datesCounted, setupDate, tomorrow, skippedDates);
-  const daysAfterTomorrow = Math.round((new Date(`${date}T00:00:00`) - new Date(`${tomorrow}T00:00:00`)) / 86400000);
-  return (tomorrowIndex + daysAfterTomorrow) % programLength;
 }
