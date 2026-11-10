@@ -9,7 +9,7 @@ import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
 import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
 import { setupCalendar } from "./calendar-view.js";
-import { isTrainingDate, plannedWorkoutIndex, trainingDaysFor, workoutSlotFor } from "./schedule.js";
+import { isTrainingDate, plannedWorkoutIndex, skippedWorkoutToOffer, trainingDaysFor, workoutSlotFor } from "./schedule.js";
 import { setupThemeToggle } from "./theme.js";
 import { tutorialFor } from "./tutorials.js";
 import { generalWarmup, warmupSets } from "./warmup.js";
@@ -419,6 +419,28 @@ function renderGeneralWarmup(exerciseNames, wasOpen) {
   return details;
 }
 
+// The day after a skip, offers to do the skipped workout today instead: [row], or [] when there is none.
+function makeUpRow() {
+  const from = skippedWorkoutToOffer({ skips, setDates: allSets.map((set) => set.date), today: todayString() });
+  if (from === null || from === selectedDayIndex || program[from] === undefined || program[from].recovery) {
+    return [];
+  }
+  const row = document.createElement("div");
+  row.className = "alternate-row";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "btn-alternate";
+  button.textContent = `Switch to ${program[from].name}`;
+  button.addEventListener("click", () => {
+    selectedDayIndex = from;
+    renderWorkout();
+    renderMaxDay();
+    renderGoals();
+  });
+  row.append(coachLine("alternate-note", `You skipped ${program[from].name} yesterday. Do it today instead?`), button);
+  return [row];
+}
+
 function renderWorkout() {
   const warmupWasOpen = workoutCard.querySelector(".day-warmup")?.open ?? false;
   workoutCard.replaceChildren();
@@ -447,7 +469,7 @@ function renderWorkout() {
   head.append(heading, select);
 
   if (program[selectedDayIndex].recovery) {
-    workoutCard.append(head, ...(skipNotice === null ? [] : [renderSkipRow()]), renderRecovery());
+    workoutCard.append(head, ...makeUpRow(), ...(skipNotice === null ? [] : [renderSkipRow()]), renderRecovery());
     return;
   }
 
@@ -490,7 +512,7 @@ function renderWorkout() {
     }
     list.append(item);
   }
-  workoutCard.append(head, renderSkipRow(), renderGeneralWarmup(shownNames, warmupWasOpen), list);
+  workoutCard.append(head, ...makeUpRow(), renderSkipRow(), renderGeneralWarmup(shownNames, warmupWasOpen), list);
 }
 
 function toggleRecoveryCheck(id) {

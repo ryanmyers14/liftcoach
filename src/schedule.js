@@ -65,6 +65,26 @@ export function workoutSlotFor(date, trainingDays) {
   return upcoming === -1 ? 0 : upcoming;
 }
 
+// The date before a "YYYY-MM-DD" date.
+export function dayBefore(date) {
+  const [year, month, day] = date.split("-").map(Number);
+  const before = new Date(year, month - 1, day - 1);
+  return `${before.getFullYear()}-${String(before.getMonth() + 1).padStart(2, "0")}-${String(before.getDate()).padStart(2, "0")}`;
+}
+
+// After skipping a workout, the next day can offer to do it then. Returns the skipped workout's position
+// in the program (a skip is saved as { date, from, next }), or null when there is nothing to offer:
+// no skip yesterday, you trained anyway yesterday, or you have already trained today.
+// Skips from before the program position was saved are bare dates and are not offered.
+export function skippedWorkoutToOffer({ skips, setDates, today }) {
+  const yesterday = dayBefore(today);
+  if (setDates.includes(yesterday) || setDates.includes(today)) {
+    return null;
+  }
+  const skippedYesterday = skips.filter((skip) => skip.date === yesterday && Number.isInteger(skip.from));
+  return skippedYesterday.length === 0 ? null : skippedYesterday[skippedYesterday.length - 1].from;
+}
+
 // "Mon, Tue, and Thu": short names in week order (Monday first), for sentences.
 export function weekdayNames(trainingDays) {
   const names = WEEKDAYS.filter((weekday) => trainingDays.includes(weekday.key)).map((weekday) => weekday.label.slice(0, 3));
