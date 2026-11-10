@@ -8,6 +8,7 @@ import { extendedEnd, formatClock, restEnd, secondsLeft } from "./rest.js";
 import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
 import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
+import { setupCalendar } from "./calendar-view.js";
 import { setupThemeToggle } from "./theme.js";
 import { tutorialFor } from "./tutorials.js";
 import { generalWarmup, warmupSets } from "./warmup.js";
@@ -1336,6 +1337,11 @@ function start() {
   document.getElementById("import-confirm-yes").addEventListener("click", confirmImport);
   document.getElementById("import-confirm-no").addEventListener("click", cancelImport);
   showBackupLoadedNotice();
+  setupCalendar({
+    openButton: document.getElementById("open-calendar"),
+    getData: () => ({ sets: allSets, skips, recoveryDates }),
+    getToday: todayString,
+  });
 
   if (profile === null) {
     openQuiz();

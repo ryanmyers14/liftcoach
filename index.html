@@ -31,6 +31,8 @@
     <section id="quiz" class="card" hidden></section>
 
     <div id="tracker" hidden>
+    <p class="calendar-row"><button id="open-calendar" type="button" class="btn-secondary">Calendar</button></p>
+
     <section id="rest-timer" class="card rest-timer" aria-live="off" hidden></section>
 
     <section id="workout" class="card" hidden></section>
@@ -101,6 +103,25 @@
     <p id="backup-message" class="form-message setup-footer" aria-live="polite"></p>
     </div>
   </main>
+
+  <dialog id="calendar" class="calendar-dialog" aria-labelledby="calendar-title">
+    <div class="calendar-head">
+      <button id="calendar-prev" type="button" class="btn-secondary calendar-step" aria-label="Previous month">&lsaquo;</button>
+      <h2 id="calendar-title"></h2>
+      <button id="calendar-next" type="button" class="btn-secondary calendar-step" aria-label="Next month">&rsaquo;</button>
+    </div>
+    <div id="calendar-grid" class="calendar-grid"></div>
+    <ul class="calendar-legend">
+      <li><span class="calendar-key calendar-trained"></span>Trained</li>
+      <li><span class="calendar-key calendar-skipped"></span>Skipped</li>
+      <li><span class="calendar-key calendar-recovery"></span>Recovery</li>
+    </ul>
+    <div id="calendar-detail" class="calendar-detail" aria-live="polite"></div>
+    <div class="calendar-actions">
+      <button id="calendar-today" type="button" class="btn-secondary">Today</button>
+      <button id="calendar-close" type="button" class="btn-secondary">Close</button>
+    </div>
+  </dialog>
 
   <script type="module" src="src/app.js"></script>
 </body>
