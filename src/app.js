@@ -8,6 +8,7 @@ import { extendedEnd, formatClock, restEnd, secondsLeft } from "./rest.js";
 import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
 import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
+import { plannedDayIndex } from "./calendar.js";
 import { setupCalendar } from "./calendar-view.js";
 import { setupThemeToggle } from "./theme.js";
 import { tutorialFor } from "./tutorials.js";
@@ -1174,6 +1175,16 @@ function rotationIndex() {
   return suggestedDayIndex(program.length, trainingDates, profile.setupDate, todayString(), skippedDates);
 }
 
+// The program day planned for a future date (the rotation, one step per day), or null with no program.
+function plannedDay(date) {
+  if (program.length === 0) {
+    return null;
+  }
+  const skippedDates = skips.map((skip) => skip.date);
+  const trainingDates = [...allSets.map((set) => set.date), ...recoveryStepDates(recoveryDates, skippedDates)];
+  return program[plannedDayIndex(program.length, trainingDates, profile.setupDate, todayString(), skippedDates, date)];
+}
+
 // The day to open on: the one a skip moved to today, or else the rotation's day.
 function openingDayIndex() {
   return startDayIndex(skips, todayString(), rotationIndex());
@@ -1339,7 +1350,7 @@ function start() {
   showBackupLoadedNotice();
   setupCalendar({
     openButton: document.getElementById("open-calendar"),
-    getData: () => ({ sets: allSets, skips, recoveryDates }),
+    getData: () => ({ sets: allSets, skips, recoveryDates, plannedDay }),
     getToday: todayString,
   });
 

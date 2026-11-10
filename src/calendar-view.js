@@ -24,7 +24,8 @@ function readableDate(date) {
   return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 }
 
-// getData: () => ({ sets, skips, recoveryDates }); getToday: () => "YYYY-MM-DD".
+// getData: () => ({ sets, skips, recoveryDates, plannedDay }), where plannedDay(date) is the program day
+// planned for a future date or null; getToday: () => "YYYY-MM-DD".
 export function setupCalendar({ openButton, getData, getToday }) {
   const dialog = document.getElementById("calendar");
   const title = document.getElementById("calendar-title");
@@ -33,8 +34,26 @@ export function setupCalendar({ openButton, getData, getToday }) {
   let shown = { year: 0, month: 0 };
   let selected = "";
 
+  function showPlan(day) {
+    const body = el("div", "calendar-detail-body");
+    if (day.recovery) {
+      body.append(el("p", "calendar-exercise", "Planned: Recovery day"));
+      body.append(el("p", "calendar-sets", "Stretching, walking, food, and sleep."));
+    } else {
+      body.append(el("p", "calendar-exercise", `Planned: ${day.name}`));
+      body.append(el("p", "calendar-sets", day.exercises.map((exercise) => exercise.name).join(", ")));
+    }
+    body.append(el("p", "calendar-note", "This assumes you follow your program one step a day. It updates as you train or skip."));
+    return body;
+  }
+
   function showDetail(data) {
     const dayName = el("h3", "calendar-detail-title", readableDate(selected));
+    const plan = selected > getToday() ? data.plannedDay(selected) : null;
+    if (plan) {
+      detail.replaceChildren(dayName, showPlan(plan));
+      return;
+    }
     const status = dayStatus(selected, data.sets, data.skips, data.recoveryDates);
     const groups = setsOnDate(data.sets, selected);
     const body = el("div", "calendar-detail-body");
@@ -60,9 +79,13 @@ export function setupCalendar({ openButton, getData, getToday }) {
         continue;
       }
       const status = dayStatus(date, data.sets, data.skips, data.recoveryDates);
+      const plan = date > today ? data.plannedDay(date) : null;
       const cell = el("button", `calendar-day calendar-${status}`, String(Number(date.slice(8))));
       cell.type = "button";
-      cell.setAttribute("aria-label", `${readableDate(date)}: ${STATUS_WORDS[status]}${date === today ? " (today)" : ""}`);
+      cell.setAttribute("aria-label", `${readableDate(date)}: ${plan ? `planned ${plan.name}` : STATUS_WORDS[status]}${date === today ? " (today)" : ""}`);
+      if (plan) {
+        cell.classList.add(plan.recovery ? "calendar-planned-rest" : "calendar-planned");
+      }
       cell.classList.toggle("calendar-today", date === today);
       cell.classList.toggle("calendar-selected", date === selected);
       cell.setAttribute("aria-pressed", String(date === selected));

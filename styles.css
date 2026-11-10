@@ -1198,3 +1198,22 @@ button {
   gap: 8px;
   margin-top: 14px;
 }
+
+.calendar-day.calendar-planned,
+.calendar-key.calendar-planned {
+  border: 1.5px dashed var(--log-edge);
+  background: var(--log-bg);
+  color: var(--log-ink);
+}
+
+.calendar-day.calendar-planned-rest {
+  border: 1.5px dashed var(--week-edge);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.calendar-note {
+  margin-top: 8px !important;
+  font-size: 13px;
+  color: var(--text-muted);
+}
