@@ -822,6 +822,19 @@ button {
   --goals-edge: #534ab7;
   --goals-ink: #3c3489;
   --goals-btn-ink: #ffffff;
+  --rest-bg: #fbe0dc;
+  --rest-edge: #c0392b;
+  --rest-ink: #7a1f16;
+  --rest-done-ink: #ffffff;
+  --warmup-bg: #faece7;
+  --warmup-edge: #b4532a;
+  --warmup-ink: #712b13;
+  --maxday-bg: #fff6c2;
+  --maxday-edge: #9a7b00;
+  --maxday-ink: #554200;
+  --week-bg: #e9edf1;
+  --week-edge: #51606f;
+  --week-ink: #2f3a45;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -840,6 +853,19 @@ button {
     --goals-edge: #afa9ec;
     --goals-ink: #cecbf6;
     --goals-btn-ink: #26215c;
+    --rest-bg: #8a2a22;
+    --rest-edge: #ff8a7a;
+    --rest-ink: #ffc9c0;
+    --rest-done-ink: #3d0d08;
+    --warmup-bg: #712b13;
+    --warmup-edge: #f0997b;
+    --warmup-ink: #f5c4b3;
+    --maxday-bg: #4d4000;
+    --maxday-edge: #f5d33f;
+    --maxday-ink: #fbea8f;
+    --week-bg: #2f3a45;
+    --week-edge: #9fb0c0;
+    --week-ink: #d3dce5;
   }
 }
 
@@ -858,6 +884,19 @@ button {
   --goals-edge: #afa9ec;
   --goals-ink: #cecbf6;
   --goals-btn-ink: #26215c;
+  --rest-bg: #8a2a22;
+  --rest-edge: #ff8a7a;
+  --rest-ink: #ffc9c0;
+  --rest-done-ink: #3d0d08;
+  --warmup-bg: #712b13;
+  --warmup-edge: #f0997b;
+  --warmup-ink: #f5c4b3;
+  --maxday-bg: #4d4000;
+  --maxday-edge: #f5d33f;
+  --maxday-ink: #fbea8f;
+  --week-bg: #2f3a45;
+  --week-edge: #9fb0c0;
+  --week-ink: #d3dce5;
 }
 
 #set-form {
@@ -910,6 +949,49 @@ button {
 #goals .btn-primary {
   background: var(--goals-edge);
   color: var(--goals-btn-ink);
+}
+
+#rest-timer {
+  background: var(--rest-bg);
+  border-color: var(--rest-edge);
+  border-left-color: var(--rest-edge);
+  color: var(--rest-ink);
+}
+
+#rest-timer.rest-done {
+  background: var(--rest-edge);
+  color: var(--rest-done-ink);
+}
+
+#warmup {
+  background: var(--warmup-bg);
+  border-color: var(--warmup-edge);
+}
+
+#warmup h2,
+#warmup h3 {
+  color: var(--warmup-ink);
+}
+
+#max-day {
+  background: var(--maxday-bg);
+  border-color: var(--maxday-edge);
+}
+
+#max-day h2,
+#max-day h3 {
+  color: var(--maxday-ink);
+}
+
+#week {
+  background: var(--week-bg);
+  border-color: var(--week-edge);
+}
+
+#week summary,
+#week h2,
+#week h3 {
+  color: var(--week-ink);
 }
 
 #set-form .text-input,
