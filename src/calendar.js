@@ -68,11 +68,18 @@ export function readableDate(date) {
   return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 }
 
+// True when a set has a date in "YYYY-MM-DD" form. Damaged saves may not, and History cannot show those.
+export function hasValidDate(set) {
+  return typeof set.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(set.date);
+}
+
 // Every day with logged sets, newest first: [{ date, exercises: [{ exercise, sets: [{ weight, reps }] }] }].
 // Within a day the exercises are in the order they were first logged. Sets whose date is missing or is
 // not in "YYYY-MM-DD" form (damaged saves) are left out rather than shown as "Invalid Date".
-export function workoutHistory(sets) {
-  const isDate = (date) => typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date);
-  const dates = [...new Set(sets.map((set) => set.date).filter(isDate))];
-  return dates.sort().reverse().map((date) => ({ date, exercises: setsOnDate(sets, date) }));
+// With an exercise name, only that lift is kept (capital letters do not matter), so days without it drop out.
+export function workoutHistory(sets, onlyExercise = null) {
+  const wanted = onlyExercise === null ? null : onlyExercise.toLowerCase();
+  const kept = sets.filter((set) => hasValidDate(set) && (wanted === null || set.exercise.toLowerCase() === wanted));
+  const dates = [...new Set(kept.map((set) => set.date))];
+  return dates.sort().reverse().map((date) => ({ date, exercises: setsOnDate(kept, date) }));
 }
