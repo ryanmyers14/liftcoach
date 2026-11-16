@@ -28,6 +28,11 @@ export const INJURY_AREAS = [
   { key: "shoulders", label: "Shoulders" },
   { key: "knees", label: "Knees" },
   { key: "lowerBack", label: "Lower back" },
+  { key: "wrists", label: "Wrists" },
+  { key: "elbows", label: "Elbows" },
+  { key: "hips", label: "Hips" },
+  { key: "neck", label: "Neck" },
+  { key: "ankles", label: "Ankles" },
 ];
 
 export const MIN_DAYS = 2;
@@ -98,6 +103,8 @@ const EQUIPMENT_SWAPS = {
 };
 
 // Applied after the equipment swaps: replaces exercises that load a sore area, or drops them (null).
+// Areas are applied in the order of INJURY_AREAS, not the order they were ticked, so a combination
+// always gives the same program.
 const INJURY_SWAPS = {
   shoulders: {
     "Overhead press": "Lateral raise",
@@ -118,7 +125,51 @@ const INJURY_SWAPS = {
     "Barbell row": "Lat pulldown",
     "Weighted crunch": null,
   },
+  wrists: {
+    "Bench press": "Machine chest press",
+    "Incline barbell press": "Machine chest press",
+    "Dumbbell bench press": null,
+    "Incline dumbbell press": null,
+    "Overhead press": "Lateral raise",
+    "Dumbbell shoulder press": "Lateral raise",
+    "Dumbbell curl": "Hammer curl",
+  },
+  elbows: {
+    "Overhead triceps extension": null,
+    "Triceps pushdown": null,
+    "Dumbbell curl": null,
+    "Hammer curl": null,
+  },
+  hips: {
+    "Back squat": "Leg curl",
+    "Goblet squat": null,
+    "Leg press": null,
+    "Dumbbell lunge": null,
+    "Bulgarian split squat": null,
+    "Hip thrust": null,
+  },
+  neck: {
+    "Back squat": "Leg press",
+    "Overhead press": "Lateral raise",
+    "Dumbbell shoulder press": "Lateral raise",
+  },
+  ankles: {
+    "Back squat": "Leg press",
+    "Goblet squat": null,
+    "Dumbbell lunge": null,
+    "Bulgarian split squat": "Leg extension",
+    "Calf raise": null,
+    "Seated calf raise": null,
+  },
 };
+
+// If injuries remove every exercise from a day, it gets these instead (the first ones no ticked area touches),
+// so a training day is never empty. Each has a starting weight for its equipment.
+const SAFE_FILLERS = {
+  gym: ["Lat pulldown", "Cable row", "Rear delt fly", "Face pull", "Lateral raise", "Weighted crunch"],
+  dumbbells: ["Dumbbell row", "Dumbbell pullover", "Rear delt fly", "Lateral raise", "Weighted crunch"],
+};
+const FILLER_COUNT = 2;
 
 const MAX_EXERCISES_BY_MINUTES = { 30: 3, 45: 4 };
 
@@ -190,13 +241,19 @@ const DEFAULT_PROFILE = {
   weights: {},
 };
 
+// Keeps only known injury areas, once each. A damaged value (null, text, an unknown name) becomes an empty list
+// instead of crashing the app on load.
+function cleanInjuries(injuries) {
+  return Array.isArray(injuries) ? INJURY_AREAS.filter((area) => injuries.includes(area.key)).map((area) => area.key) : [];
+}
+
 // Fills in anything an older saved profile (or a partial one) is missing.
 export function withDefaults(profile) {
   const weights = {};
   for (const [lift, entry] of Object.entries(profile.weights ?? {})) {
     weights[lift] = typeof entry === "number" ? { weight: entry, reps: 8 } : entry;
   }
-  return { ...DEFAULT_PROFILE, ...profile, weights };
+  return { ...DEFAULT_PROFILE, ...profile, weights, injuries: cleanInjuries(profile.injuries) };
 }
 
 function roundToFive(weight) {
@@ -225,14 +282,18 @@ function daysForSplit(daysPerWeek) {
 function exercisesForDay(templateNames, { equipment, injuries, sessionMinutes }) {
   const swapped = templateNames.map((name) => {
     let result = EQUIPMENT_SWAPS[equipment][name] ?? name;
-    for (const area of injuries) {
-      if (result !== null && INJURY_SWAPS[area][result] !== undefined) {
-        result = INJURY_SWAPS[area][result];
+    for (const { key } of INJURY_AREAS) {
+      if (injuries.includes(key) && result !== null && INJURY_SWAPS[key][result] !== undefined) {
+        result = INJURY_SWAPS[key][result];
       }
     }
     return result;
   });
   const unique = [...new Set(swapped.filter((name) => name !== null))];
+  if (unique.length === 0) {
+    const touched = (name) => INJURY_AREAS.some(({ key }) => injuries.includes(key) && INJURY_SWAPS[key][name] !== undefined);
+    return SAFE_FILLERS[equipment].filter((name) => !touched(name)).slice(0, FILLER_COUNT);
+  }
   return unique.slice(0, MAX_EXERCISES_BY_MINUTES[sessionMinutes] ?? unique.length);
 }
 

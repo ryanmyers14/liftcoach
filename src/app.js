@@ -1,4 +1,4 @@
-import { chartPoints, goalRows, weightHistory } from "./goals.js";
+import { chartPoints, goalRows, loggedExercises, weightHistory } from "./goals.js";
 import { lastSession, lastTimeText, suggestNext } from "./coach.js";
 import { MAX_LIFTS, estimatedMax, isMaxLift, latestMax, maxIsDue, maxRampSets, withNewMax } from "./maxes.js";
 import { MUSCLES, alternatesFor, repRangeFor, restFor, swapState, tempoFor } from "./exercises.js";
@@ -9,7 +9,11 @@ import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
 import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
 import { setupCalendar } from "./calendar-view.js";
-import { isTrainingDate, plannedWorkoutIndex, skippedWorkoutToOffer, trainingDaysFor, workoutSlotFor } from "./schedule.js";
+import { startDaysEditor } from "./days-editor.js";
+import { startInjuryEditor } from "./injuries.js";
+import { planSummary } from "./plan.js";
+import { daysChangedOn, isTrainingDate, plannedWorkoutIndex, skippedWorkoutToOffer, trainingDaysFor, workoutSlotFor } from "./schedule.js";
+import { currentStreak, streakText } from "./streak.js";
 import { setupThemeToggle } from "./theme.js";
 import { tutorialFor } from "./tutorials.js";
 import { generalWarmup, warmupSets } from "./warmup.js";
@@ -45,6 +49,11 @@ const trackerSection = document.getElementById("tracker");
 const restTimerCard = document.getElementById("rest-timer");
 const workoutCard = document.getElementById("workout");
 const setupButton = document.getElementById("open-setup");
+const injuriesButton = document.getElementById("open-injuries");
+const injuryEditorCard = document.getElementById("injury-editor");
+const planCard = document.getElementById("plan");
+const daysButton = document.getElementById("open-days");
+const daysEditorCard = document.getElementById("days-editor");
 const exportButton = document.getElementById("export-data");
 const importButton = document.getElementById("import-data");
 const importFile = document.getElementById("import-file");
@@ -915,26 +924,32 @@ function renderGoalRow(row) {
 
 function renderGoals() {
   goalsCard.replaceChildren();
-  goalsCard.hidden = program.length === 0;
-  if (program.length === 0) {
-    return;
-  }
+  const hasProgram = program.length > 0;
 
   const heading = document.createElement("h2");
   heading.textContent = "Your goals";
   const intro = document.createElement("p");
   intro.className = "empty";
-  intro.textContent = "Suggested goals are four weight jumps above where you started. Tap Change goal to set your own.";
+  intro.textContent = hasProgram
+    ? "Suggested goals are four weight jumps above where you started. Tap Change goal to set your own."
+    : "Goals for the lifts you have logged. Suggested goals are four weight jumps above your first logged weight. Tap Change goal to set your own.";
 
+  // With a program the card follows the selected day's lifts; without one (setup skipped) it follows
+  // the lifts you have logged, so you can still set a goal for each of them.
   const startEstimates = Object.fromEntries(
     Object.entries(startWeightsByExercise).map(([exercise, start]) => [exercise, start.weight]),
   );
-  const rows = goalRows([...new Set(shownDayExercises())], allSets, goals, startEstimates, profile?.experience);
+  const exercises = hasProgram ? [...new Set(shownDayExercises())] : loggedExercises(allSets);
+  const rows = goalRows(exercises, allSets, goals, startEstimates, profile?.experience);
+  goalsCard.hidden = !hasProgram && exercises.length === 0;
+  if (goalsCard.hidden) {
+    return;
+  }
   goalsCard.append(heading, intro);
 
   const withGoals = rows.filter((row) => row.goal !== null);
   if (withGoals.length === 0) {
-    const message = program[selectedDayIndex].recovery
+    const message = program[selectedDayIndex]?.recovery
       ? "No lifting on a recovery day, so there are no goals to show. Pick a workout day above to see its goals."
       : "Log a set of one of today's lifts to get its goal.";
     goalsCard.append(coachLine("empty", message));
@@ -1060,7 +1075,14 @@ function renderMaxDay() {
   maxDayCard.append(heading, intro, list);
 }
 
+function renderStreak() {
+  const today = todayString();
+  const streak = currentStreak({ sets: allSets, skips, recoveryDates, trainingDays, trainingDaysSince: profile?.trainingDaysSince, today });
+  document.getElementById("streak").textContent = streakText(streak, allSets.some((set) => set.date === today));
+}
+
 function render() {
+  renderStreak();
   renderWorkout();
   renderMaxDay();
   renderGoals();
@@ -1310,10 +1332,24 @@ function applyProfile() {
   setupButton.textContent = hasProgram ? "Retake setup quiz" : "Set up a program";
 }
 
+// Shows the current training days and injuries, with the buttons that edit them.
+function renderPlan() {
+  const hasProgram = program.length > 0;
+  planCard.hidden = !hasProgram;
+  if (hasProgram) {
+    const summary = planSummary({ trainingDays, injuries: profile.injuries });
+    document.getElementById("plan-days").textContent = summary.days;
+    document.getElementById("plan-injuries").textContent = summary.injuries;
+  }
+}
+
 function showTracker() {
   quizCard.hidden = true;
+  injuryEditorCard.hidden = true;
+  daysEditorCard.hidden = true;
   trackerSection.hidden = false;
   renderWeek();
+  renderPlan();
   render();
 }
 
@@ -1332,8 +1368,56 @@ function saveProfileAndContinue(nextProfile) {
 function openQuiz() {
   trackerSection.hidden = true;
   startQuiz(quizCard, {
-    onDone: saveProfileAndContinue,
+    onDone: (answers) => saveProfileAndContinue({ ...answers, trainingDaysSince: nextTrainingDaysSince(trainingDaysFor(answers)) }),
     onSkip: () => saveProfileAndContinue({ skipped: true }),
+  });
+}
+
+// The date to remember as "training days last changed", for the streak. Nothing to remember without a program yet.
+function nextTrainingDaysSince(nextDays) {
+  if (program.length === 0) {
+    return undefined;
+  }
+  return daysChangedOn({ previousDays: trainingDays, nextDays, previousSince: profile.trainingDaysSince, today: todayString() });
+}
+
+// Hiding the main screen while an edit card is open resets the page to the top, so coming back
+// scrolls to the Your plan card, where the student started. If saving failed, the error banner
+// at the top of the page is shown instead, so the message is not missed.
+function scrollToPlan() {
+  (storageError.hidden ? planCard : storageError).scrollIntoView({ block: "center" });
+}
+
+// Changes only the injuries in the saved setup; everything else about the profile stays.
+function openInjuryEditor() {
+  trackerSection.hidden = true;
+  startInjuryEditor(injuryEditorCard, {
+    injuries: profile.injuries,
+    onSave: (injuries) => {
+      saveProfileAndContinue({ ...profile, injuries });
+      scrollToPlan();
+    },
+    onCancel: () => {
+      showTracker();
+      scrollToPlan();
+    },
+  });
+}
+
+// Changes the weekdays in the saved setup. The program is rebuilt for the new number of days;
+// everything else about the profile, and all logged sets and goals, stay.
+function openDaysEditor() {
+  trackerSection.hidden = true;
+  startDaysEditor(daysEditorCard, {
+    trainingDays,
+    onSave: (days) => {
+      saveProfileAndContinue({ ...profile, trainingDays: days, daysPerWeek: days.length, trainingDaysSince: nextTrainingDaysSince(days) });
+      scrollToPlan();
+    },
+    onCancel: () => {
+      showTracker();
+      scrollToPlan();
+    },
   });
 }
 
@@ -1369,6 +1453,8 @@ function start() {
   buildRestTimerCard();
   setForm.addEventListener("submit", handleSubmit);
   setupButton.addEventListener("click", openQuiz);
+  injuriesButton.addEventListener("click", openInjuryEditor);
+  daysButton.addEventListener("click", openDaysEditor);
   exportButton.addEventListener("click", exportData);
   importButton.addEventListener("click", () => importFile.click());
   importFile.addEventListener("change", () => {

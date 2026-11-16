@@ -42,6 +42,20 @@ export function suggestedGoal(exercise, baseline, experience) {
   return baseline + JUMPS_TO_SUGGESTED_GOAL * incrementFor(exercise, "beginner") * share;
 }
 
+// Each exercise you have logged at least once, in the order you first logged it. Without a program
+// there is no list of lifts to set goals for, so the goals card uses the lifts you have actually done.
+// Names that differ only in capital letters count as one lift, shown the way it was first typed.
+export function loggedExercises(sets) {
+  const byKey = new Map();
+  for (const set of sets) {
+    const key = set.exercise.toLowerCase();
+    if (!byKey.has(key)) {
+      byKey.set(key, set.exercise);
+    }
+  }
+  return [...byKey.values()];
+}
+
 // One row per exercise: { exercise, baseline, current, goal, isCustom, percent, reached }.
 // baseline, current and goal are null when there is no weight to build a goal from yet.
 // customGoals: { "<exercise name lower case>": weight }; startEstimates: the same keys, weights.

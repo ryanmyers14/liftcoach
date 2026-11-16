@@ -744,6 +744,26 @@ button {
   padding: 0 20px;
 }
 
+.plan-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.plan-label {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.plan-value {
+  margin: 2px 0 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
 .setup-footer {
   text-align: center;
   margin: 0;
@@ -1032,6 +1052,14 @@ button {
 
 .calendar-row {
   margin: 0 0 12px;
+}
+
+.streak {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  font-weight: 600;
 }
 
 .calendar-dialog {

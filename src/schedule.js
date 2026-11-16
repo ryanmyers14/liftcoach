@@ -85,6 +85,13 @@ export function skippedWorkoutToOffer({ skips, setDates, today }) {
   return skippedYesterday.length === 0 ? null : skippedYesterday[skippedYesterday.length - 1].from;
 }
 
+// The date your training days last changed, saved with the setup so the streak only judges days from then on.
+// Returns the earlier date (or undefined) when the weekdays are the same, and today when they are different.
+export function daysChangedOn({ previousDays, nextDays, previousSince, today }) {
+  const sameDays = previousDays.length === nextDays.length && previousDays.every((day) => nextDays.includes(day));
+  return sameDays ? previousSince : today;
+}
+
 // "Mon, Tue, and Thu": short names in week order (Monday first), for sentences.
 export function weekdayNames(trainingDays) {
   const names = WEEKDAYS.filter((weekday) => trainingDays.includes(weekday.key)).map((weekday) => weekday.label.slice(0, 3));

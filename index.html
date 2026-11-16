@@ -30,8 +30,14 @@
 
     <section id="quiz" class="card" hidden></section>
 
+    <section id="injury-editor" class="card" hidden></section>
+
+    <section id="days-editor" class="card" hidden></section>
+
     <div id="tracker" hidden>
     <p class="calendar-row"><button id="open-calendar" type="button" class="btn-secondary">Calendar</button></p>
+
+    <p id="streak" class="streak" aria-live="polite"></p>
 
     <section id="rest-timer" class="card rest-timer" aria-live="off" hidden></section>
 
@@ -87,7 +93,27 @@
       <ol id="today-sets" class="set-list"></ol>
     </section>
 
-    <p class="setup-footer"><button id="open-setup" type="button" class="btn-link"></button></p>
+    <section id="plan" class="card" hidden>
+      <h2>Your plan</h2>
+      <div class="plan-row">
+        <div>
+          <p class="plan-label">Training days</p>
+          <p id="plan-days" class="plan-value"></p>
+        </div>
+        <button id="open-days" type="button" class="btn-secondary">Edit days</button>
+      </div>
+      <div class="plan-row">
+        <div>
+          <p class="plan-label">Injuries</p>
+          <p id="plan-injuries" class="plan-value"></p>
+        </div>
+        <button id="open-injuries" type="button" class="btn-secondary">Edit injuries</button>
+      </div>
+    </section>
+
+    <p class="setup-footer">
+      <button id="open-setup" type="button" class="btn-link"></button>
+    </p>
     <p class="setup-footer">
       <button id="export-data" type="button" class="btn-link">Export data</button>
       <button id="import-data" type="button" class="btn-link">Import data</button>
