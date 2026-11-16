@@ -1051,7 +1051,30 @@ button {
 }
 
 .calendar-row {
+  display: flex;
+  gap: 8px;
   margin: 0 0 12px;
+}
+
+.history-list {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.history-day {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.history-date {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.history-empty {
+  margin: 8px 0;
+  color: var(--text-muted);
 }
 
 .streak {
@@ -1209,6 +1232,7 @@ button {
 }
 
 .calendar-exercise {
+  overflow-wrap: anywhere;
   margin-top: 6px !important;
   font-weight: 700;
 }

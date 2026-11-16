@@ -35,7 +35,10 @@
     <section id="days-editor" class="card" hidden></section>
 
     <div id="tracker" hidden>
-    <p class="calendar-row"><button id="open-calendar" type="button" class="btn-secondary">Calendar</button></p>
+    <p class="calendar-row">
+      <button id="open-calendar" type="button" class="btn-secondary">Calendar</button>
+      <button id="open-history" type="button" class="btn-secondary">History</button>
+    </p>
 
     <p id="streak" class="streak" aria-live="polite"></p>
 
@@ -129,6 +132,16 @@
     <p id="backup-message" class="form-message setup-footer" aria-live="polite"></p>
     </div>
   </main>
+
+  <dialog id="history" class="calendar-dialog" aria-labelledby="history-title">
+    <div class="calendar-head">
+      <h2 id="history-title">History</h2>
+    </div>
+    <div id="history-list" class="calendar-detail history-list"></div>
+    <div class="calendar-actions">
+      <button id="history-close" type="button" class="btn-secondary">Close</button>
+    </div>
+  </dialog>
 
   <dialog id="calendar" class="calendar-dialog" aria-labelledby="calendar-title">
     <div class="calendar-head">

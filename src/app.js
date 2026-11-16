@@ -9,6 +9,7 @@ import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
 import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
 import { setupCalendar } from "./calendar-view.js";
+import { setupHistory } from "./history-view.js";
 import { startDaysEditor } from "./days-editor.js";
 import { startInjuryEditor } from "./injuries.js";
 import { planSummary } from "./plan.js";
@@ -1471,6 +1472,10 @@ function start() {
     openButton: document.getElementById("open-calendar"),
     getData: () => ({ sets: allSets, skips, recoveryDates, plannedDay }),
     getToday: todayString,
+  });
+  setupHistory({
+    openButton: document.getElementById("open-history"),
+    getSets: () => allSets,
   });
 
   if (profile === null) {

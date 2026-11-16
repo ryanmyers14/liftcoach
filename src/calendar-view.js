@@ -2,7 +2,7 @@
 // Days you trained, skipped, or rested are marked; tapping a day shows the sets logged on it.
 // The data lives in app.js, so it is read through getData() each time the panel opens or changes.
 
-import { dayStatus, monthGrid, monthLabel, setsOnDate, shiftMonth } from "./calendar.js";
+import { dayStatus, monthGrid, monthLabel, readableDate, setsOnDate, shiftMonth } from "./calendar.js";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const STATUS_WORDS = { trained: "trained", skipped: "skipped", recovery: "recovery day", none: "nothing logged" };
@@ -17,12 +17,6 @@ const el = (tag, className, text) => {
   }
   return node;
 };
-
-// "2026-11-02" -> "Monday, November 2". Built from numbers so the device's time zone cannot shift it.
-function readableDate(date) {
-  const [year, month, day] = date.split("-").map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-}
 
 // getData: () => ({ sets, skips, recoveryDates, plannedDay }), where plannedDay(date) is the program day
 // planned for a future date or null; getToday: () => "YYYY-MM-DD".

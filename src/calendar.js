@@ -61,3 +61,18 @@ export function setsOnDate(sets, date) {
   }
   return groups;
 }
+
+// "2026-11-02" -> "Monday, November 2". Built from numbers so the device's time zone cannot shift it.
+export function readableDate(date) {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+}
+
+// Every day with logged sets, newest first: [{ date, exercises: [{ exercise, sets: [{ weight, reps }] }] }].
+// Within a day the exercises are in the order they were first logged. Sets whose date is missing or is
+// not in "YYYY-MM-DD" form (damaged saves) are left out rather than shown as "Invalid Date".
+export function workoutHistory(sets) {
+  const isDate = (date) => typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date);
+  const dates = [...new Set(sets.map((set) => set.date).filter(isDate))];
+  return dates.sort().reverse().map((date) => ({ date, exercises: setsOnDate(sets, date) }));
+}
