@@ -3,7 +3,7 @@
 
 import { isSavedSet } from "./backup.js";
 
-const STORAGE_KEY = "liftcoach_sets_v1";
+export const SETS_KEY = "liftcoach_sets_v1";
 const PROFILE_KEY = "liftcoach_profile_v1";
 const SWAPS_KEY = "liftcoach_swaps_v1";
 const SAVED_SWAPS_KEY = "liftcoach_saved_swaps_v1";
@@ -19,7 +19,7 @@ export class StorageError extends Error {}
 
 export function loadSets() {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(SETS_KEY);
     const sets = saved ? JSON.parse(saved) : [];
     // A saved value of the wrong shape (not a list, or entries missing a lift, weight, reps or date) would
     // crash the app on load, so only the well-formed sets are kept.
@@ -31,7 +31,7 @@ export function loadSets() {
 
 export function saveSets(sets) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sets));
+    localStorage.setItem(SETS_KEY, JSON.stringify(sets));
   } catch {
     throw new StorageError("Could not save. Your browser may be blocking storage (private mode?).");
   }

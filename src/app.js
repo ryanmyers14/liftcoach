@@ -21,7 +21,7 @@ import { currentStreak, streakText } from "./streak.js";
 import { setupThemeToggle } from "./theme.js";
 import { tutorialFor } from "./tutorials.js";
 import { generalWarmup, warmupSets } from "./warmup.js";
-import { loadGoals, loadMaxes, loadProfile, loadRecoveryChecks, loadRecoveryDates, loadSets, loadSavedSwaps, loadShortDays, loadShortToday, loadSkips, loadSwaps, newSetId, saveGoals, saveMaxes, saveProfile, saveRecoveryChecks, saveRecoveryDates, saveSavedSwaps, saveSets, saveShortDays, saveShortToday, saveSkips, saveSwaps, todayString } from "./storage.js";
+import { loadGoals, loadMaxes, loadProfile, loadRecoveryChecks, loadRecoveryDates, loadSets, loadSavedSwaps, loadShortDays, loadShortToday, loadSkips, loadSwaps, newSetId, saveGoals, saveMaxes, saveProfile, saveRecoveryChecks, saveRecoveryDates, saveSavedSwaps, saveSets, saveShortDays, saveShortToday, saveSkips, saveSwaps, SETS_KEY, todayString } from "./storage.js";
 
 // The service worker keeps browsers from running old copies of the app after an update.
 if ("serviceWorker" in navigator) {
@@ -1231,7 +1231,17 @@ function prefillFromCoach() {
   repsInput.value = advice.suggestion.reps;
 }
 
-function persist(nextSets) {
+// Saves a change to the sets. The change is applied to the sets as they are in storage right now, not to this
+// tab's copy, so a set logged in another tab of the app is kept instead of being overwritten.
+// change: (currentSets) => nextSets.
+function persist(change) {
+  let latest = allSets;
+  try {
+    latest = loadSets();
+  } catch {
+    // Damaged saved sets cannot be merged with; fall back to what this tab has, as before.
+  }
+  const nextSets = change(latest);
   try {
     saveSets(nextSets);
     storageError.hidden = true;
@@ -1244,7 +1254,7 @@ function persist(nextSets) {
 }
 
 function deleteSet(id) {
-  if (persist(allSets.filter((set) => set.id !== id))) {
+  if (persist((sets) => sets.filter((set) => set.id !== id))) {
     showMessage("Set removed.", false);
     render();
   }
@@ -1273,7 +1283,7 @@ function handleSubmit(event) {
   }
 
   const newSet = { id: newSetId(), exercise, weight, reps, date: todayString() };
-  if (persist([...allSets, newSet])) {
+  if (persist((sets) => [...sets, newSet])) {
     skipNotice = null;
     showMessage(`Logged ${weight} lb × ${reps}.`, false);
     render();
@@ -1617,6 +1627,17 @@ function start() {
   document.getElementById("import-confirm-yes").addEventListener("click", confirmImport);
   document.getElementById("import-confirm-no").addEventListener("click", cancelImport);
   showBackupLoadedNotice();
+  // Sets logged or removed in another tab of the app show up here without a refresh.
+  window.addEventListener("storage", (event) => {
+    if (event.key === SETS_KEY || event.key === null) {
+      try {
+        allSets = loadSets();
+        render();
+      } catch (error) {
+        showStorageError(error);
+      }
+    }
+  });
   setupCalendar({
     openButton: document.getElementById("open-calendar"),
     getData: () => ({ sets: allSets, skips, recoveryDates, plannedDay }),
