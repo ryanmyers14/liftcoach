@@ -263,7 +263,7 @@ function cleanWeights(weights) {
 }
 
 // Fills in anything an older saved profile (or a partial one) is missing, and replaces any value that is not one
-// the quiz could have saved (an unknown experience or equipment, a day count outside 2 to 6, a bodyweight that is
+// the quiz could have saved (an unknown experience, equipment, or session length, a day count outside 2 to 6, a bodyweight that is
 // not a positive number) with the default, so a damaged setup still opens.
 export function withDefaults(profile) {
   const merged = { ...DEFAULT_PROFILE, ...profile };
@@ -273,6 +273,7 @@ export function withDefaults(profile) {
     experience: Object.hasOwn(EXPERIENCE_MULTIPLIERS, merged.experience) ? merged.experience : DEFAULT_PROFILE.experience,
     equipment: Object.hasOwn(QUIZ_LIFTS, merged.equipment) ? merged.equipment : DEFAULT_PROFILE.equipment,
     daysPerWeek: validDays ? merged.daysPerWeek : DEFAULT_PROFILE.daysPerWeek,
+    sessionMinutes: SESSION_LENGTHS.some((length) => length.key === merged.sessionMinutes) ? merged.sessionMinutes : DEFAULT_PROFILE.sessionMinutes,
     bodyweight: isPositiveNumber(merged.bodyweight) ? merged.bodyweight : null,
     weights: cleanWeights(profile.weights),
     injuries: cleanInjuries(profile.injuries),

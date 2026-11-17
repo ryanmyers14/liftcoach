@@ -11,6 +11,7 @@ import { renderBodyMap } from "./bodymap.js";
 import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
 import { setupCalendar } from "./calendar-view.js";
 import { setupHistory } from "./history-view.js";
+import { startSessionEditor } from "./session-editor.js";
 import { startDaysEditor } from "./days-editor.js";
 import { startInjuryEditor } from "./injuries.js";
 import { planSummary } from "./plan.js";
@@ -56,6 +57,8 @@ const injuryEditorCard = document.getElementById("injury-editor");
 const planCard = document.getElementById("plan");
 const daysButton = document.getElementById("open-days");
 const daysEditorCard = document.getElementById("days-editor");
+const lengthButton = document.getElementById("open-length");
+const sessionEditorCard = document.getElementById("session-editor");
 const exportButton = document.getElementById("export-data");
 const importButton = document.getElementById("import-data");
 const importFile = document.getElementById("import-file");
@@ -1334,8 +1337,9 @@ function renderPlan() {
   const hasProgram = program.length > 0;
   planCard.hidden = !hasProgram;
   if (hasProgram) {
-    const summary = planSummary({ trainingDays, injuries: profile.injuries });
+    const summary = planSummary({ trainingDays, sessionMinutes: profile.sessionMinutes, injuries: profile.injuries });
     document.getElementById("plan-days").textContent = summary.days;
+    document.getElementById("plan-length").textContent = summary.length;
     document.getElementById("plan-injuries").textContent = summary.injuries;
   }
 }
@@ -1344,6 +1348,7 @@ function showTracker() {
   quizCard.hidden = true;
   injuryEditorCard.hidden = true;
   daysEditorCard.hidden = true;
+  sessionEditorCard.hidden = true;
   trackerSection.hidden = false;
   renderWeek();
   renderPlan();
@@ -1392,6 +1397,23 @@ function openInjuryEditor() {
     injuries: profile.injuries,
     onSave: (injuries) => {
       saveProfileAndContinue({ ...profile, injuries });
+      scrollToPlan();
+    },
+    onCancel: () => {
+      showTracker();
+      scrollToPlan();
+    },
+  });
+}
+
+// Changes only the session length in the saved setup. The program is rebuilt with that many exercises a day;
+// everything else about the profile, and all logged sets and goals, stay.
+function openSessionEditor() {
+  trackerSection.hidden = true;
+  startSessionEditor(sessionEditorCard, {
+    sessionMinutes: profile.sessionMinutes,
+    onSave: (sessionMinutes) => {
+      saveProfileAndContinue({ ...profile, sessionMinutes });
       scrollToPlan();
     },
     onCancel: () => {
@@ -1452,6 +1474,7 @@ function start() {
   setupButton.addEventListener("click", openQuiz);
   injuriesButton.addEventListener("click", openInjuryEditor);
   daysButton.addEventListener("click", openDaysEditor);
+  lengthButton.addEventListener("click", openSessionEditor);
   exportButton.addEventListener("click", exportData);
   importButton.addEventListener("click", () => importFile.click());
   importFile.addEventListener("change", () => {
