@@ -247,13 +247,36 @@ function cleanInjuries(injuries) {
   return Array.isArray(injuries) ? INJURY_AREAS.filter((area) => injuries.includes(area.key)).map((area) => area.key) : [];
 }
 
-// Fills in anything an older saved profile (or a partial one) is missing.
-export function withDefaults(profile) {
-  const weights = {};
-  for (const [lift, entry] of Object.entries(profile.weights ?? {})) {
-    weights[lift] = typeof entry === "number" ? { weight: entry, reps: 8 } : entry;
+const isPositiveNumber = (value) => typeof value === "number" && Number.isFinite(value) && value > 0;
+
+// Keeps only the lifts saved as a positive weight, or as { weight, reps } with both positive. A damaged entry is
+// dropped instead of putting "NaN" on screen.
+function cleanWeights(weights) {
+  const clean = {};
+  for (const [lift, entry] of Object.entries(typeof weights === "object" && weights !== null ? weights : {})) {
+    const normalized = typeof entry === "number" ? { weight: entry, reps: 8 } : entry;
+    if (typeof normalized === "object" && normalized !== null && isPositiveNumber(normalized.weight) && isPositiveNumber(normalized.reps)) {
+      clean[lift] = normalized;
+    }
   }
-  return { ...DEFAULT_PROFILE, ...profile, weights, injuries: cleanInjuries(profile.injuries) };
+  return clean;
+}
+
+// Fills in anything an older saved profile (or a partial one) is missing, and replaces any value that is not one
+// the quiz could have saved (an unknown experience or equipment, a day count outside 2 to 6, a bodyweight that is
+// not a positive number) with the default, so a damaged setup still opens.
+export function withDefaults(profile) {
+  const merged = { ...DEFAULT_PROFILE, ...profile };
+  const validDays = Number.isInteger(merged.daysPerWeek) && merged.daysPerWeek >= MIN_DAYS && merged.daysPerWeek <= MAX_DAYS;
+  return {
+    ...merged,
+    experience: Object.hasOwn(EXPERIENCE_MULTIPLIERS, merged.experience) ? merged.experience : DEFAULT_PROFILE.experience,
+    equipment: Object.hasOwn(QUIZ_LIFTS, merged.equipment) ? merged.equipment : DEFAULT_PROFILE.equipment,
+    daysPerWeek: validDays ? merged.daysPerWeek : DEFAULT_PROFILE.daysPerWeek,
+    bodyweight: isPositiveNumber(merged.bodyweight) ? merged.bodyweight : null,
+    weights: cleanWeights(profile.weights),
+    injuries: cleanInjuries(profile.injuries),
+  };
 }
 
 function roundToFive(weight) {

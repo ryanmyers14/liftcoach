@@ -5,6 +5,7 @@ import { MUSCLES, alternatesFor, repRangeFor, restFor, swapState, tempoFor } fro
 import { buildProgram, startDayIndex, startingWeights, weeklyMuscleSets, withDefaults } from "./program.js";
 import { RECOVERY_CHECKLIST, alternateStretchesFor, muscleRecovery, previousWorkout, stretchNamed, stretchesFor, withRecoveryDays } from "./recovery.js";
 import { extendedEnd, formatClock, restEnd, secondsLeft } from "./rest.js";
+import { parseNumber } from "./numbers.js";
 import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
 import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
@@ -1101,11 +1102,6 @@ function prefillFromCoach() {
   }
   weightInput.value = advice.suggestion.weight;
   repsInput.value = advice.suggestion.reps;
-}
-
-function parseNumber(text) {
-  const trimmed = text.trim();
-  return trimmed === "" ? NaN : Number(trimmed);
 }
 
 function persist(nextSets) {

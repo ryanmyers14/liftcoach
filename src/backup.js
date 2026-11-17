@@ -10,7 +10,7 @@ const isList = (value) => Array.isArray(value);
 const isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 const isNumber = (value) => typeof value === "number" && Number.isFinite(value);
 
-const isSavedSet = (set) =>
+export const isSavedSet = (set) =>
   isObject(set) && typeof set.exercise === "string" && set.exercise.trim() !== "" && isNumber(set.weight) && isNumber(set.reps) && typeof set.date === "string";
 
 // The storage keys the app uses, each with a check that a backup's value has the right shape.

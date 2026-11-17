@@ -1,6 +1,8 @@
 // Sets are saved in the browser as a list of
 // { id, exercise, weight, reps, date } where date is local "YYYY-MM-DD".
 
+import { isSavedSet } from "./backup.js";
+
 const STORAGE_KEY = "liftcoach_sets_v1";
 const PROFILE_KEY = "liftcoach_profile_v1";
 const SWAPS_KEY = "liftcoach_swaps_v1";
@@ -16,7 +18,10 @@ export class StorageError extends Error {}
 export function loadSets() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
+    const sets = saved ? JSON.parse(saved) : [];
+    // A saved value of the wrong shape (not a list, or entries missing a lift, weight, reps or date) would
+    // crash the app on load, so only the well-formed sets are kept.
+    return Array.isArray(sets) ? sets.filter(isSavedSet) : [];
   } catch {
     throw new StorageError("Could not read your saved sets.");
   }
@@ -107,7 +112,8 @@ export function saveGoals(goals) {
 export function loadSkips() {
   try {
     const saved = JSON.parse(localStorage.getItem(SKIPS_KEY) ?? "[]");
-    return saved.map((skip) => (typeof skip === "string" ? { date: skip } : skip));
+    const skips = Array.isArray(saved) ? saved.map((skip) => (typeof skip === "string" ? { date: skip } : skip)) : [];
+    return skips.filter((skip) => typeof skip === "object" && skip !== null && typeof skip.date === "string");
   } catch {
     return [];
   }
