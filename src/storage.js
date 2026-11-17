@@ -12,6 +12,8 @@ const MAXES_KEY = "liftcoach_maxes_v1";
 const SKIPS_KEY = "liftcoach_skips_v1";
 const RECOVERY_DATES_KEY = "liftcoach_recovery_dates_v1";
 const RECOVERY_CHECKS_KEY = "liftcoach_recovery_checks_v1";
+const SHORT_TODAY_KEY = "liftcoach_short_today_v1";
+const SHORT_DAYS_KEY = "liftcoach_short_days_v1";
 
 export class StorageError extends Error {}
 
@@ -189,4 +191,47 @@ export function todayString() {
 
 export function newSetId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// A short day chosen for today only: { date, minutes }. A choice saved on an earlier day is ignored, so the
+// next day is back to the full workout.
+export function loadShortToday(today) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SHORT_TODAY_KEY) ?? "null");
+    return typeof saved === "object" && saved !== null && saved.date === today && Number.isInteger(saved.minutes) ? { date: today, minutes: saved.minutes } : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveShortToday(shortToday) {
+  try {
+    if (shortToday === null) {
+      localStorage.removeItem(SHORT_TODAY_KEY);
+    } else {
+      localStorage.setItem(SHORT_TODAY_KEY, JSON.stringify(shortToday));
+    }
+  } catch {
+    throw new StorageError("Could not save. Your browser may be blocking storage (private mode?).");
+  }
+}
+
+// Short days that repeat every week: { "<weekday number>": minutes }. Entries that are not a weekday 0 to 6
+// with a whole number of minutes are dropped.
+export function loadShortDays() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SHORT_DAYS_KEY) ?? "{}");
+    const entries = typeof saved === "object" && saved !== null && !Array.isArray(saved) ? Object.entries(saved) : [];
+    return Object.fromEntries(entries.filter(([weekday, minutes]) => /^[0-6]$/.test(weekday) && Number.isInteger(minutes)));
+  } catch {
+    return {};
+  }
+}
+
+export function saveShortDays(shortDays) {
+  try {
+    localStorage.setItem(SHORT_DAYS_KEY, JSON.stringify(shortDays));
+  } catch {
+    throw new StorageError("Could not save. Your browser may be blocking storage (private mode?).");
+  }
 }

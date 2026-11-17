@@ -171,7 +171,7 @@ const SAFE_FILLERS = {
 };
 const FILLER_COUNT = 2;
 
-const MAX_EXERCISES_BY_MINUTES = { 30: 3, 45: 4 };
+export const MAX_EXERCISES_BY_MINUTES = { 30: 3, 45: 4 };
 
 // Starting weights for exercises the quiz does not ask about, as a fraction of a lift it does.
 const ESTIMATES = {

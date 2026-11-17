@@ -25,7 +25,7 @@ export const WEEKDAYS = [
 // Where a weekday falls in the week when it starts on Monday: Monday is 0 and Sunday is 6.
 const weekRank = (weekday) => (weekday + 6) % 7;
 
-const weekdayOf = (date) => {
+export const weekdayOf = (date) => {
   const [year, month, day] = date.split("-").map(Number);
   return new Date(year, month - 1, day).getDay();
 };

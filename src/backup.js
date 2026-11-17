@@ -23,6 +23,7 @@ const SHAPES = {
   liftcoach_goals_v1: (value) => isObject(value) && Object.values(value).every(isNumber),
   liftcoach_maxes_v1: isList,
   liftcoach_skips_v1: isList,
+  liftcoach_short_days_v1: (value) => isObject(value) && Object.values(value).every(isNumber),
   liftcoach_recovery_dates_v1: isList,
   liftcoach_recovery_checks_v1: isObject,
 };

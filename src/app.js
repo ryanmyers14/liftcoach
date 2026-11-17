@@ -12,15 +12,16 @@ import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.
 import { setupCalendar } from "./calendar-view.js";
 import { setupHistory } from "./history-view.js";
 import { startSessionEditor } from "./session-editor.js";
+import { activeShortDay, repeatingShortDays, shortDaysText, shorterLengths, trimToLength, weekdayName } from "./short-day.js";
 import { startDaysEditor } from "./days-editor.js";
 import { startInjuryEditor } from "./injuries.js";
 import { planSummary } from "./plan.js";
-import { daysChangedOn, isTrainingDate, plannedWorkoutIndex, skippedWorkoutToOffer, trainingDaysFor, workoutSlotFor } from "./schedule.js";
+import { daysChangedOn, isTrainingDate, plannedWorkoutIndex, skippedWorkoutToOffer, trainingDaysFor, weekdayOf, workoutSlotFor } from "./schedule.js";
 import { currentStreak, streakText } from "./streak.js";
 import { setupThemeToggle } from "./theme.js";
 import { tutorialFor } from "./tutorials.js";
 import { generalWarmup, warmupSets } from "./warmup.js";
-import { loadGoals, loadMaxes, loadProfile, loadRecoveryChecks, loadRecoveryDates, loadSets, loadSavedSwaps, loadSkips, loadSwaps, newSetId, saveGoals, saveMaxes, saveProfile, saveRecoveryChecks, saveRecoveryDates, saveSavedSwaps, saveSets, saveSkips, saveSwaps, todayString } from "./storage.js";
+import { loadGoals, loadMaxes, loadProfile, loadRecoveryChecks, loadRecoveryDates, loadSets, loadSavedSwaps, loadShortDays, loadShortToday, loadSkips, loadSwaps, newSetId, saveGoals, saveMaxes, saveProfile, saveRecoveryChecks, saveRecoveryDates, saveSavedSwaps, saveSets, saveShortDays, saveShortToday, saveSkips, saveSwaps, todayString } from "./storage.js";
 
 // The service worker keeps browsers from running old copies of the app after an update.
 if ("serviceWorker" in navigator) {
@@ -76,6 +77,9 @@ let startWeightsByExercise = {};
 let selectedDayIndex = 0;
 let shownTutorialName = null;
 let swaps = {};
+let shortToday = null;
+let shortDays = {};
+let shortPanelOpen = false;
 let savedSwaps = {};
 let goals = {};
 let editingGoal = null;
@@ -455,6 +459,126 @@ function makeUpRow() {
   return [row];
 }
 
+// Short days: a workout cut down for today only, or every week on one weekday (see short-day.js).
+function currentShortDay() {
+  return activeShortDay({ planMinutes: profile.sessionMinutes, today: todayString(), shortToday, shortDays });
+}
+
+// The exercises of a workout day as they apply today: the full list, or the first few on a short day.
+function dayExercises(index) {
+  const short = currentShortDay();
+  const exercises = program[index].exercises;
+  return short === null ? exercises : trimToLength(exercises, short.minutes);
+}
+
+function saveShortChoice(nextShortToday, nextShortDays) {
+  try {
+    saveShortToday(nextShortToday);
+    saveShortDays(nextShortDays);
+    storageError.hidden = true;
+  } catch (error) {
+    showStorageError(error);
+  }
+  shortToday = nextShortToday;
+  shortDays = nextShortDays;
+  shortPanelOpen = false;
+  renderWorkout();
+  renderPlan();
+  renderMaxDay();
+  renderGoals();
+  renderCoach();
+}
+
+function chooseShortDay(minutes, repeating) {
+  const today = todayString();
+  const weekday = weekdayOf(today);
+  if (repeating) {
+    saveShortChoice(null, { ...shortDays, [weekday]: minutes });
+  } else {
+    saveShortChoice({ date: today, minutes }, shortDays);
+  }
+}
+
+// Back to the full workout for today. On a weekly short day this is remembered for today only, so next week is still short.
+function backToFullWorkout() {
+  const today = todayString();
+  const weekday = weekdayOf(today);
+  const weeklyStillApplies = repeatingShortDays(profile.sessionMinutes, shortDays).some((day) => day.weekday === weekday);
+  saveShortChoice(weeklyStillApplies ? { date: today, minutes: profile.sessionMinutes } : null, shortDays);
+}
+
+function stopRepeating() {
+  const weekday = weekdayOf(todayString());
+  const nextShortDays = { ...shortDays };
+  delete nextShortDays[weekday];
+  const keepToday = shortToday !== null && shorterLengths(profile.sessionMinutes).some((length) => length.key === shortToday.minutes);
+  saveShortChoice(keepToday ? shortToday : null, nextShortDays);
+}
+
+function clearShortDays() {
+  saveShortChoice(shortToday, {});
+}
+
+function shortButton(text, onClick) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "btn-alternate";
+  button.textContent = text;
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+// The "Short on time?" control above today's workout, or nothing when no shorter length exists for this plan.
+function shortDayRow() {
+  const today = todayString();
+  const weekdayLabel = weekdayName(today);
+  const short = currentShortDay();
+  const weekday = weekdayOf(today);
+  const repeatingToday = repeatingShortDays(profile.sessionMinutes, shortDays).find((day) => day.weekday === weekday);
+  const lengths = shorterLengths(profile.sessionMinutes);
+  if (short === null && repeatingToday === undefined && lengths.length === 0) {
+    return [];
+  }
+
+  const row = document.createElement("div");
+  row.className = "alternate-row";
+  if (short !== null) {
+    const when = short.scope === "today" ? "today only" : `every ${weekdayLabel}`;
+    row.append(coachLine("alternate-note", `Short day: ${short.minutes} minutes (${when}).`), shortButton("Back to full workout", backToFullWorkout));
+    if (repeatingToday !== undefined) {
+      row.append(shortButton("Stop repeating", stopRepeating));
+    }
+    return [row];
+  }
+  if (repeatingToday !== undefined) {
+    row.append(
+      coachLine("alternate-note", `Today is a full workout. Every ${weekdayLabel} is set to ${repeatingToday.minutes} minutes.`),
+      shortButton(`Use the ${repeatingToday.minutes}-minute day`, () => saveShortChoice(null, shortDays)),
+      shortButton("Stop repeating", stopRepeating),
+    );
+    return [row];
+  }
+
+  row.append(shortButton(shortPanelOpen ? "Cancel" : "Short on time?", () => {
+    shortPanelOpen = !shortPanelOpen;
+    renderWorkout();
+  }));
+  if (shortPanelOpen) {
+    const select = document.createElement("select");
+    select.className = "alternate-select short-length-select";
+    select.setAttribute("aria-label", "Shorter session length");
+    for (const length of lengths) {
+      select.append(new Option(`${length.label}, ${length.detail.toLowerCase()}`, String(length.key)));
+    }
+    row.append(
+      select,
+      shortButton("Just today", () => chooseShortDay(Number(select.value), false)),
+      shortButton(`Every ${weekdayLabel}`, () => chooseShortDay(Number(select.value), true)),
+    );
+  }
+  return [row];
+}
+
 function renderWorkout() {
   const warmupWasOpen = workoutCard.querySelector(".day-warmup")?.open ?? false;
   workoutCard.replaceChildren();
@@ -491,7 +615,7 @@ function renderWorkout() {
   list.className = "workout-list";
   const active = currentExercise().toLowerCase();
   const shownNames = [];
-  for (const { name: originalName, sets } of program[selectedDayIndex].exercises) {
+  for (const { name: originalName, sets } of dayExercises(selectedDayIndex)) {
     const state = stateFor(originalName);
     const name = state.shown;
     shownNames.push(name);
@@ -526,7 +650,7 @@ function renderWorkout() {
     }
     list.append(item);
   }
-  workoutCard.append(head, ...makeUpRow(), renderSkipRow(), renderGeneralWarmup(shownNames, warmupWasOpen), list);
+  workoutCard.append(head, ...makeUpRow(), renderSkipRow(), ...shortDayRow(), renderGeneralWarmup(shownNames, warmupWasOpen), list);
 }
 
 function toggleRecoveryCheck(id) {
@@ -971,7 +1095,7 @@ function renderGoals() {
 
 // The exercises shown for the selected workout day, with swaps applied (none on a recovery day).
 function shownDayExercises() {
-  return program[selectedDayIndex].exercises.map(({ name }) => stateFor(name).shown);
+  return dayExercises(selectedDayIndex).map(({ name }) => stateFor(name).shown);
 }
 
 function saveMax(exercise, weight) {
@@ -1340,6 +1464,9 @@ function renderPlan() {
     const summary = planSummary({ trainingDays, sessionMinutes: profile.sessionMinutes, injuries: profile.injuries });
     document.getElementById("plan-days").textContent = summary.days;
     document.getElementById("plan-length").textContent = summary.length;
+    const shortText = shortDaysText(profile.sessionMinutes, shortDays);
+    document.getElementById("plan-short-row").hidden = shortText === "";
+    document.getElementById("plan-short").textContent = shortText;
     document.getElementById("plan-injuries").textContent = summary.injuries;
   }
 }
@@ -1445,6 +1572,8 @@ function start() {
     allSets = loadSets();
     profile = loadProfile();
     swaps = loadSwaps(todayString());
+    shortToday = loadShortToday(todayString());
+    shortDays = loadShortDays();
     savedSwaps = loadSavedSwaps();
     goals = loadGoals();
     maxes = loadMaxes();
@@ -1475,6 +1604,7 @@ function start() {
   injuriesButton.addEventListener("click", openInjuryEditor);
   daysButton.addEventListener("click", openDaysEditor);
   lengthButton.addEventListener("click", openSessionEditor);
+  document.getElementById("clear-short-days").addEventListener("click", clearShortDays);
   exportButton.addEventListener("click", exportData);
   importButton.addEventListener("click", () => importFile.click());
   importFile.addEventListener("change", () => {
