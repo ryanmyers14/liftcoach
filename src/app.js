@@ -8,6 +8,7 @@ import { extendedEnd, formatClock, restEnd, secondsLeft } from "./rest.js";
 import { parseNumber } from "./numbers.js";
 import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
+import { MAX_BODYWEIGHT, MIN_BODYWEIGHT, bodyweightChartPoints, latestBodyweight, parseBodyweight, withBodyweight } from "./bodyweight.js";
 import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
 import { setupCalendar } from "./calendar-view.js";
 import { setupHistory } from "./history-view.js";
@@ -21,7 +22,7 @@ import { currentStreak, streakText } from "./streak.js";
 import { setupThemeToggle } from "./theme.js";
 import { tutorialFor } from "./tutorials.js";
 import { generalWarmup, warmupSets } from "./warmup.js";
-import { loadGoals, loadMaxes, loadProfile, loadRecoveryChecks, loadRecoveryDates, loadSets, loadSavedSwaps, loadShortDays, loadShortToday, loadSkips, loadSwaps, newSetId, saveGoals, saveMaxes, saveProfile, saveRecoveryChecks, saveRecoveryDates, saveSavedSwaps, saveSets, saveShortDays, saveShortToday, saveSkips, saveSwaps, SETS_KEY, todayString } from "./storage.js";
+import { loadBodyweights, loadGoals, loadMaxes, loadProfile, loadRecoveryChecks, loadRecoveryDates, loadSets, loadSavedSwaps, loadShortDays, loadShortToday, loadSkips, loadSwaps, newSetId, saveBodyweights, saveGoals, saveMaxes, saveProfile, saveRecoveryChecks, saveRecoveryDates, saveSavedSwaps, saveSets, saveShortDays, saveShortToday, saveSkips, saveSwaps, SETS_KEY, todayString } from "./storage.js";
 
 // The service worker keeps browsers from running old copies of the app after an update.
 if ("serviceWorker" in navigator) {
@@ -40,6 +41,11 @@ const weightInput = document.getElementById("weight");
 const repsInput = document.getElementById("reps");
 const setForm = document.getElementById("set-form");
 const formMessage = document.getElementById("form-message");
+const bodyweightForm = document.getElementById("bodyweight-form");
+const bodyweightInput = document.getElementById("bodyweight");
+const bodyweightMessage = document.getElementById("bodyweight-message");
+const bodyweightLatest = document.getElementById("bodyweight-latest");
+const bodyweightChart = document.getElementById("bodyweight-chart");
 const coachCard = document.getElementById("coach");
 const todaySetsList = document.getElementById("today-sets");
 const storageError = document.getElementById("storage-error");
@@ -69,6 +75,7 @@ const importConfirmText = document.getElementById("import-confirm-text");
 let pendingImport = null;
 
 let allSets = [];
+let bodyweights = [];
 let profile = null;
 let program = [];
 let workoutPositions = []; // where each training day sits in `program`; recovery entries are left out
@@ -137,7 +144,7 @@ async function importData(file) {
     }
     const madeOn = result.exportedAt === null ? "" : ` made on ${result.exportedAt.slice(0, 10)}`;
     pendingImport = result.data;
-    importConfirmText.textContent = `Replace everything saved on this device with the backup${madeOn}? Your current sets, goals, and setup will be overwritten.`;
+    importConfirmText.textContent = `Replace everything saved on this device with the backup${madeOn}? Your current sets, goals, bodyweight, and setup will be overwritten.`;
     importConfirm.hidden = false;
     showBackupMessage("", false);
   } catch {
@@ -169,7 +176,7 @@ function showBackupLoadedNotice() {
   try {
     if (sessionStorage.getItem(BACKUP_LOADED_KEY) === "1") {
       sessionStorage.removeItem(BACKUP_LOADED_KEY);
-      showBackupMessage("Backup loaded. Your sets, goals, and setup are back.", false);
+      showBackupMessage("Backup loaded. Your sets, goals, bodyweight, and setup are back.", false);
     }
   } catch {
     // Without session storage the page just does not show the notice.
@@ -1210,6 +1217,77 @@ function renderStreak() {
   document.getElementById("streak").textContent = streakText(streak, allSets.some((set) => set.date === today));
 }
 
+function renderBodyweight() {
+  const latest = latestBodyweight(bodyweights);
+  bodyweightLatest.textContent = latest === null ? "No weight added yet." : `Last: ${latest.weight} lb on ${latest.date}`;
+  bodyweightChart.replaceChildren(...renderBodyweightChart());
+}
+
+// A line of your weight by date, like the line on the Goals card. Returns the elements to show: nothing with
+// no weigh-ins, and a single dot with a hint when there is only one day.
+function renderBodyweightChart() {
+  const points = bodyweightChartPoints(bodyweights);
+  if (points.length === 0) {
+    return [];
+  }
+  const plotWidth = CHART.width - CHART.left - CHART.right;
+  const plotHeight = CHART.height - CHART.top - CHART.bottom;
+  const at = ({ x, y }) => [CHART.left + x * plotWidth, CHART.top + y * plotHeight];
+  const first = points[0];
+  const last = points[points.length - 1];
+
+  const svg = svgElement("svg", { viewBox: `0 0 ${CHART.width} ${CHART.height}`, class: "goal-chart", role: "img" });
+  svg.setAttribute("aria-label", `Bodyweight: ${first.weight} lb on ${first.date}, ${last.weight} lb on ${last.date}`);
+  if (points.length > 1) {
+    svg.append(svgElement("polyline", { points: points.map((point) => at(point).join(",")).join(" "), class: "chart-line" }));
+  }
+  for (const point of points) {
+    svg.append(svgElement("circle", { cx: at(point)[0], cy: at(point)[1], r: 3.5, class: "chart-dot" }));
+  }
+  const addLabel = (text, x, y, anchor) => {
+    const label = svgElement("text", { x, y, class: "chart-label", "text-anchor": anchor });
+    label.textContent = text;
+    svg.append(label);
+  };
+  if (points.length === 1) {
+    addLabel(`${last.weight} lb`, at(last)[0], at(last)[1] - 8, "middle");
+    addLabel(last.date, CHART.left, CHART.height - 4, "start");
+    return [svg, coachLine("goal-status", "One day so far. Add your weight on another day to draw your line.")];
+  }
+  addLabel(`${first.weight} lb`, at(first)[0], at(first)[1] - 8, "start");
+  addLabel(`${last.weight} lb`, at(last)[0], at(last)[1] - 8, "end");
+  addLabel(first.date, CHART.left, CHART.height - 4, "start");
+  addLabel(last.date, CHART.width - CHART.right, CHART.height - 4, "end");
+  return [svg];
+}
+
+function showBodyweightMessage(text, isError) {
+  bodyweightMessage.textContent = text;
+  bodyweightMessage.classList.toggle("error", isError);
+}
+
+function handleBodyweightSubmit(event) {
+  event.preventDefault();
+  const weight = parseBodyweight(bodyweightInput.value);
+  if (Number.isNaN(weight)) {
+    showBodyweightMessage(`Enter your weight as a number from ${MIN_BODYWEIGHT} to ${MAX_BODYWEIGHT} lb.`, true);
+    bodyweightInput.focus();
+    return;
+  }
+  const next = withBodyweight(bodyweights, todayString(), weight);
+  try {
+    saveBodyweights(next);
+  } catch (error) {
+    showStorageError(error);
+    return;
+  }
+  storageError.hidden = true;
+  bodyweights = next;
+  bodyweightInput.value = "";
+  showBodyweightMessage(`Added ${weight} lb.`, false);
+  renderBodyweight();
+}
+
 function render() {
   renderStreak();
   renderWorkout();
@@ -1580,6 +1658,7 @@ function openDaysEditor() {
 function start() {
   try {
     allSets = loadSets();
+    bodyweights = loadBodyweights();
     profile = loadProfile();
     swaps = loadSwaps(todayString());
     shortToday = loadShortToday(todayString());
@@ -1610,6 +1689,8 @@ function start() {
   });
   buildRestTimerCard();
   setForm.addEventListener("submit", handleSubmit);
+  bodyweightForm.addEventListener("submit", handleBodyweightSubmit);
+  renderBodyweight();
   setupButton.addEventListener("click", openQuiz);
   injuriesButton.addEventListener("click", openInjuryEditor);
   daysButton.addEventListener("click", openDaysEditor);

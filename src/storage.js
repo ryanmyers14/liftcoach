@@ -2,6 +2,7 @@
 // { id, exercise, weight, reps, date } where date is local "YYYY-MM-DD".
 
 import { isSavedSet } from "./backup.js";
+import { isSavedBodyweight } from "./bodyweight.js";
 
 export const SETS_KEY = "liftcoach_sets_v1";
 const PROFILE_KEY = "liftcoach_profile_v1";
@@ -14,6 +15,7 @@ const RECOVERY_DATES_KEY = "liftcoach_recovery_dates_v1";
 const RECOVERY_CHECKS_KEY = "liftcoach_recovery_checks_v1";
 const SHORT_TODAY_KEY = "liftcoach_short_today_v1";
 const SHORT_DAYS_KEY = "liftcoach_short_days_v1";
+const BODYWEIGHT_KEY = "liftcoach_bodyweight_v1";
 
 export class StorageError extends Error {}
 
@@ -211,6 +213,24 @@ export function saveShortToday(shortToday) {
     } else {
       localStorage.setItem(SHORT_TODAY_KEY, JSON.stringify(shortToday));
     }
+  } catch {
+    throw new StorageError("Could not save. Your browser may be blocking storage (private mode?).");
+  }
+}
+
+// Bodyweight check-ins: { date, weight } entries, oldest first. Anything damaged is dropped.
+export function loadBodyweights() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(BODYWEIGHT_KEY) ?? "[]");
+    return Array.isArray(saved) ? saved.filter(isSavedBodyweight).sort((a, b) => a.date.localeCompare(b.date)) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveBodyweights(entries) {
+  try {
+    localStorage.setItem(BODYWEIGHT_KEY, JSON.stringify(entries));
   } catch {
     throw new StorageError("Could not save. Your browser may be blocking storage (private mode?).");
   }

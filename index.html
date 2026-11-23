@@ -98,6 +98,16 @@
       <ol id="today-sets" class="set-list"></ol>
     </section>
 
+    <form id="bodyweight-form" class="card" novalidate>
+      <h2>Bodyweight</h2>
+      <p id="bodyweight-latest" class="plan-label"></p>
+      <div id="bodyweight-chart"></div>
+      <label class="field-label" for="bodyweight">Today's weight (lb)</label>
+      <input id="bodyweight" class="text-input" type="text" inputmode="decimal" autocomplete="off" placeholder="180">
+      <p id="bodyweight-message" class="form-message" aria-live="polite"></p>
+      <button type="submit" class="btn-primary">Add weight</button>
+    </form>
+
     <section id="plan" class="card" hidden>
       <h2>Your plan</h2>
       <div class="plan-row">
