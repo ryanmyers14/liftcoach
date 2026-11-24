@@ -1,5 +1,6 @@
 // The one-time setup quiz: experience, schedule, goal, equipment, injuries,
 // bodyweight, and current working weights.
+import { MAX_BODYWEIGHT, MIN_BODYWEIGHT, parseBodyweight } from "./bodyweight.js";
 import { parseNumber, parseWeight } from "./numbers.js";
 import {
   buildProgram,
@@ -8,6 +9,7 @@ import {
   GOALS,
   INJURY_AREAS,
   MAX_DAYS,
+  MAX_QUIZ_REPS,
   MIN_DAYS,
   QUIZ_LIFTS,
   SESSION_LENGTHS,
@@ -16,8 +18,6 @@ import { WEEKDAYS, weekdayNames } from "./schedule.js";
 import { todayString } from "./storage.js";
 
 const MAX_QUIZ_WEIGHT = 1500;
-const MAX_QUIZ_REPS = 30;
-const MAX_BODYWEIGHT = 700;
 const STEP_COUNT = 9;
 
 function element(tag, className, text) {
@@ -70,6 +70,13 @@ function optionalNumber(input, { max, wholeNumber }) {
   const value = wholeNumber ? parseNumber(text) : parseWeight(text);
   const valid = Number.isFinite(value) && value > 0 && value <= max && (!wholeNumber || Number.isInteger(value));
   return valid ? value : NaN;
+}
+
+// Reads the optional bodyweight field: blank is null, and anything that is not 50 to 700 lb (like the Bodyweight
+// card accepts) is NaN.
+function optionalBodyweight(input) {
+  const text = input.value.trim();
+  return text === "" ? null : parseBodyweight(text);
 }
 
 // Calls onDone(profile) when finished, or onSkip() if the student skips the quiz.
@@ -255,9 +262,9 @@ export function startQuiz(container, { onDone, onSkip }) {
     form.append(label, input, message, next);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      const value = optionalNumber(input, { max: MAX_BODYWEIGHT, wholeNumber: false });
+      const value = optionalBodyweight(input);
       if (Number.isNaN(value)) {
-        message.textContent = `Enter a weight between 1 and ${MAX_BODYWEIGHT} lb, or leave it blank.`;
+        message.textContent = `Enter a weight between ${MIN_BODYWEIGHT} and ${MAX_BODYWEIGHT} lb, or leave it blank.`;
         input.focus();
         return;
       }

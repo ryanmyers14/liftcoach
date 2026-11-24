@@ -1,5 +1,7 @@
 // Turns the setup-quiz answers into a weekly program and starting weights.
+import { MAX_BODYWEIGHT, MIN_BODYWEIGHT } from "./bodyweight.js";
 import { isAccessory, MUSCLES, musclesFor } from "./exercises.js";
+import { MAX_WEIGHT } from "./numbers.js";
 
 export const EXPERIENCE_LEVELS = [
   { key: "beginner", label: "Under 6 months", detail: "New, or getting back into it" },
@@ -249,13 +251,20 @@ function cleanInjuries(injuries) {
 
 const isPositiveNumber = (value) => typeof value === "number" && Number.isFinite(value) && value > 0;
 
+// The most reps the quiz accepts for a recent hard set.
+export const MAX_QUIZ_REPS = 30;
+
+// A weight the quiz could have saved: up to the heaviest lift the app accepts, with reps as a whole number from 1 to 30.
+const isQuizSet = (entry) =>
+  isPositiveNumber(entry.weight) && entry.weight <= MAX_WEIGHT && Number.isInteger(entry.reps) && entry.reps >= 1 && entry.reps <= MAX_QUIZ_REPS;
+
 // Keeps only the lifts saved as a positive weight, or as { weight, reps } with both positive. A damaged entry is
 // dropped instead of putting "NaN" on screen.
 function cleanWeights(weights) {
   const clean = {};
   for (const [lift, entry] of Object.entries(typeof weights === "object" && weights !== null ? weights : {})) {
     const normalized = typeof entry === "number" ? { weight: entry, reps: 8 } : entry;
-    if (typeof normalized === "object" && normalized !== null && isPositiveNumber(normalized.weight) && isPositiveNumber(normalized.reps)) {
+    if (typeof normalized === "object" && normalized !== null && isQuizSet(normalized)) {
       clean[lift] = normalized;
     }
   }
@@ -263,8 +272,7 @@ function cleanWeights(weights) {
 }
 
 // Fills in anything an older saved profile (or a partial one) is missing, and replaces any value that is not one
-// the quiz could have saved (an unknown experience, equipment, or session length, a day count outside 2 to 6, a bodyweight that is
-// not a positive number) with the default, so a damaged setup still opens.
+// the quiz could have saved (an unknown experience, equipment, or session length, a day count outside 2 to 6, a bodyweight outside 50 to 700 lb) with the default, so a damaged setup still opens.
 export function withDefaults(profile) {
   const merged = { ...DEFAULT_PROFILE, ...profile };
   const validDays = Number.isInteger(merged.daysPerWeek) && merged.daysPerWeek >= MIN_DAYS && merged.daysPerWeek <= MAX_DAYS;
@@ -274,7 +282,7 @@ export function withDefaults(profile) {
     equipment: Object.hasOwn(QUIZ_LIFTS, merged.equipment) ? merged.equipment : DEFAULT_PROFILE.equipment,
     daysPerWeek: validDays ? merged.daysPerWeek : DEFAULT_PROFILE.daysPerWeek,
     sessionMinutes: SESSION_LENGTHS.some((length) => length.key === merged.sessionMinutes) ? merged.sessionMinutes : DEFAULT_PROFILE.sessionMinutes,
-    bodyweight: isPositiveNumber(merged.bodyweight) ? merged.bodyweight : null,
+    bodyweight: isPositiveNumber(merged.bodyweight) && merged.bodyweight >= MIN_BODYWEIGHT && merged.bodyweight <= MAX_BODYWEIGHT ? merged.bodyweight : null,
     weights: cleanWeights(profile.weights),
     injuries: cleanInjuries(profile.injuries),
   };
