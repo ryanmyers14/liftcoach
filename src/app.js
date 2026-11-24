@@ -8,7 +8,7 @@ import { extendedEnd, formatClock, restEnd, secondsLeft } from "./rest.js";
 import { parseNumber } from "./numbers.js";
 import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
-import { MAX_BODYWEIGHT, MIN_BODYWEIGHT, bodyweightChartPoints, latestBodyweight, parseBodyweight, withBodyweight } from "./bodyweight.js";
+import { MAX_BODYWEIGHT, MIN_BODYWEIGHT, bodyweightChartPoints, parseBodyweight, shownBodyweight, withBodyweight } from "./bodyweight.js";
 import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
 import { setupCalendar } from "./calendar-view.js";
 import { setupHistory } from "./history-view.js";
@@ -1218,8 +1218,12 @@ function renderStreak() {
 }
 
 function renderBodyweight() {
-  const latest = latestBodyweight(bodyweights);
-  bodyweightLatest.textContent = latest === null ? "No weight added yet." : `Last: ${latest.weight} lb on ${latest.date}`;
+  const shown = shownBodyweight(bodyweights, profile?.bodyweight);
+  if (shown === null) {
+    bodyweightLatest.textContent = "No weight added yet.";
+  } else {
+    bodyweightLatest.textContent = shown.date === null ? `${shown.weight} lb (from your setup)` : `Last: ${shown.weight} lb on ${shown.date}`;
+  }
   bodyweightChart.replaceChildren(...renderBodyweightChart());
 }
 
@@ -1579,6 +1583,7 @@ function saveProfileAndContinue(nextProfile) {
   }
   profile = nextProfile;
   applyProfile();
+  renderBodyweight();
   showTracker();
 }
 

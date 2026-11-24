@@ -34,6 +34,16 @@ export function latestBodyweight(entries) {
   return entries.length === 0 ? null : entries[entries.length - 1];
 }
 
+// What the bodyweight card shows: your newest weigh-in if you have one, otherwise the weight you gave in the
+// setup quiz (marked with date null so the card can say where it came from), otherwise null.
+export function shownBodyweight(entries, quizWeight) {
+  const latest = latestBodyweight(entries);
+  if (latest !== null) {
+    return latest;
+  }
+  return Number.isFinite(quizWeight) ? { date: null, weight: quizWeight } : null;
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Where to draw each check-in, as fractions of the chart from 0 to 1: x runs left to right by date (a lone
