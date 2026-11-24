@@ -3,6 +3,7 @@
 
 import { isSavedSet } from "./backup.js";
 import { isSavedBodyweight, isSavedGoalDate, isSavedGoalWeight } from "./bodyweight.js";
+import { isSavedLiftWeight } from "./numbers.js";
 
 export const SETS_KEY = "liftcoach_sets_v1";
 const PROFILE_KEY = "liftcoach_profile_v1";
@@ -97,9 +98,15 @@ export function saveSavedSwaps(savedSwaps) {
 }
 
 // Goals you set yourself: { "<exercise name lower case>": target weight in lb }.
+// Goals: { "<exercise name lower case>": weight }. Anything that is not a real weight is dropped, so a damaged
+// goal falls back to the suggested one.
 export function loadGoals() {
   try {
-    return JSON.parse(localStorage.getItem(GOALS_KEY) ?? "{}");
+    const saved = JSON.parse(localStorage.getItem(GOALS_KEY) ?? "{}");
+    if (typeof saved !== "object" || saved === null || Array.isArray(saved)) {
+      return {};
+    }
+    return Object.fromEntries(Object.entries(saved).filter(([, weight]) => isSavedLiftWeight(weight)));
   } catch {
     return {};
   }

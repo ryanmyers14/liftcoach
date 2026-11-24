@@ -5,7 +5,7 @@ import { MUSCLES, alternatesFor, repRangeFor, restFor, swapState, tempoFor } fro
 import { buildProgram, startDayIndex, startingWeights, weeklyMuscleSets, withDefaults } from "./program.js";
 import { RECOVERY_CHECKLIST, alternateStretchesFor, muscleRecovery, previousWorkout, stretchNamed, stretchesFor, withRecoveryDays } from "./recovery.js";
 import { extendedEnd, formatClock, restEnd, secondsLeft } from "./rest.js";
-import { parseNumber, parseWeight } from "./numbers.js";
+import { MAX_WEIGHT, parseNumber, parseWeight } from "./numbers.js";
 import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
 import { MAX_BODYWEIGHT, MIN_BODYWEIGHT, bodyweightChartPoints, bodyweightDateMarks, bodyweightGoalPoint, bodyweightGoalY, bodyweightScale, goalSummaryLines, isSavedGoalDate, parseBodyweight, shortDateLabel, shownBodyweight, withBodyweight } from "./bodyweight.js";
@@ -33,7 +33,6 @@ if ("serviceWorker" in navigator) {
 setupThemeToggle(document.getElementById("theme-toggle"));
 
 const BACKUP_LOADED_KEY = "liftcoach_backup_loaded";
-const MAX_WEIGHT = 1500;
 const MAX_REPS_PER_SET = 100;
 
 const exerciseInput = document.getElementById("exercise");

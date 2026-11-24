@@ -11,3 +11,11 @@ export function parseNumber(text) {
 export function parseWeight(text) {
   return Math.round(parseNumber(text) * 100) / 100;
 }
+
+// The heaviest lift weight the app accepts, in pounds.
+export const MAX_WEIGHT = 1500;
+
+// True for a number a lift weight or goal could really be: above 0 and no more than MAX_WEIGHT.
+export function isSavedLiftWeight(value) {
+  return Number.isFinite(value) && value > 0 && value <= MAX_WEIGHT;
+}

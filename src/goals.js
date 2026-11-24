@@ -164,7 +164,7 @@ function sessionsPerWeek(exercise, sets, today) {
 // { jumps, increment, sessions, perWeek, assumed, days, date }, where date is null when it is more than a
 // year away, or null when you have already reached the goal.
 export function reachEstimate({ exercise, current, goal, sets, experience, today }) {
-  if (current >= goal) {
+  if (!Number.isFinite(current) || !Number.isFinite(goal) || current >= goal) {
     return null;
   }
   const increment = incrementFor(exercise, experience);

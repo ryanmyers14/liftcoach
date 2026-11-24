@@ -4,6 +4,7 @@
 // The Light/Dark choice is a per-device setting and is not part of a backup.
 
 import { isSavedBodyweight, isSavedGoalDate, isSavedGoalWeight } from "./bodyweight.js";
+import { isSavedLiftWeight } from "./numbers.js";
 
 const BACKUP_APP = "liftcoach";
 const BACKUP_VERSION = 1;
@@ -22,7 +23,7 @@ const SHAPES = {
   liftcoach_profile_v1: isObject,
   liftcoach_swaps_v1: isObject,
   liftcoach_saved_swaps_v1: isObject,
-  liftcoach_goals_v1: (value) => isObject(value) && Object.values(value).every(isNumber),
+  liftcoach_goals_v1: (value) => isObject(value) && Object.values(value).every(isSavedLiftWeight),
   liftcoach_maxes_v1: isList,
   liftcoach_skips_v1: isList,
   liftcoach_short_days_v1: (value) => isObject(value) && Object.values(value).every(isNumber),
