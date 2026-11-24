@@ -719,6 +719,17 @@ button {
   stroke-width: 1;
 }
 
+.goal-weight-form {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--text-muted);
+  border-top-color: color-mix(in srgb, var(--text-muted) 30%, transparent);
+}
+
+.goal-weight-form .btn-secondary {
+  margin-top: 8px;
+}
+
 .chart-goal-line {
   stroke: var(--ok);
   stroke-width: 1.5;

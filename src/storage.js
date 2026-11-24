@@ -2,7 +2,7 @@
 // { id, exercise, weight, reps, date } where date is local "YYYY-MM-DD".
 
 import { isSavedSet } from "./backup.js";
-import { isSavedBodyweight } from "./bodyweight.js";
+import { isSavedBodyweight, isSavedGoalWeight } from "./bodyweight.js";
 
 export const SETS_KEY = "liftcoach_sets_v1";
 const PROFILE_KEY = "liftcoach_profile_v1";
@@ -16,6 +16,7 @@ const RECOVERY_CHECKS_KEY = "liftcoach_recovery_checks_v1";
 const SHORT_TODAY_KEY = "liftcoach_short_today_v1";
 const SHORT_DAYS_KEY = "liftcoach_short_days_v1";
 const BODYWEIGHT_KEY = "liftcoach_bodyweight_v1";
+const BODYWEIGHT_GOAL_KEY = "liftcoach_bodyweight_goal_v1";
 
 export class StorageError extends Error {}
 
@@ -231,6 +232,29 @@ export function loadBodyweights() {
 export function saveBodyweights(entries) {
   try {
     localStorage.setItem(BODYWEIGHT_KEY, JSON.stringify(entries));
+  } catch {
+    throw new StorageError("Could not save. Your browser may be blocking storage (private mode?).");
+  }
+}
+
+// The goal weight: one number, or null when none is set (or the saved value is damaged).
+export function loadBodyweightGoal() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(BODYWEIGHT_GOAL_KEY) ?? "null");
+    return isSavedGoalWeight(saved) ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+// Saves the goal weight, or clears it when given null.
+export function saveBodyweightGoal(goal) {
+  try {
+    if (goal === null) {
+      localStorage.removeItem(BODYWEIGHT_GOAL_KEY);
+    } else {
+      localStorage.setItem(BODYWEIGHT_GOAL_KEY, JSON.stringify(goal));
+    }
   } catch {
     throw new StorageError("Could not save. Your browser may be blocking storage (private mode?).");
   }

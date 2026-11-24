@@ -8,7 +8,7 @@ import { extendedEnd, formatClock, restEnd, secondsLeft } from "./rest.js";
 import { parseNumber } from "./numbers.js";
 import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
-import { MAX_BODYWEIGHT, MIN_BODYWEIGHT, bodyweightChartPoints, bodyweightDateMarks, bodyweightScale, parseBodyweight, shortDateLabel, shownBodyweight, withBodyweight } from "./bodyweight.js";
+import { MAX_BODYWEIGHT, MIN_BODYWEIGHT, bodyweightChartPoints, bodyweightDateMarks, bodyweightGoalY, bodyweightScale, parseBodyweight, shortDateLabel, shownBodyweight, withBodyweight } from "./bodyweight.js";
 import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
 import { setupCalendar } from "./calendar-view.js";
 import { setupHistory } from "./history-view.js";
@@ -22,7 +22,7 @@ import { currentStreak, streakText } from "./streak.js";
 import { setupThemeToggle } from "./theme.js";
 import { tutorialFor } from "./tutorials.js";
 import { generalWarmup, warmupSets } from "./warmup.js";
-import { loadBodyweights, loadGoals, loadMaxes, loadProfile, loadRecoveryChecks, loadRecoveryDates, loadSets, loadSavedSwaps, loadShortDays, loadShortToday, loadSkips, loadSwaps, newSetId, saveBodyweights, saveGoals, saveMaxes, saveProfile, saveRecoveryChecks, saveRecoveryDates, saveSavedSwaps, saveSets, saveShortDays, saveShortToday, saveSkips, saveSwaps, SETS_KEY, todayString } from "./storage.js";
+import { loadBodyweightGoal, loadBodyweights, loadGoals, loadMaxes, loadProfile, loadRecoveryChecks, loadRecoveryDates, loadSets, loadSavedSwaps, loadShortDays, loadShortToday, loadSkips, loadSwaps, newSetId, saveBodyweightGoal, saveBodyweights, saveGoals, saveMaxes, saveProfile, saveRecoveryChecks, saveRecoveryDates, saveSavedSwaps, saveSets, saveShortDays, saveShortToday, saveSkips, saveSwaps, SETS_KEY, todayString } from "./storage.js";
 
 // The service worker keeps browsers from running old copies of the app after an update.
 if ("serviceWorker" in navigator) {
@@ -46,6 +46,10 @@ const bodyweightInput = document.getElementById("bodyweight");
 const bodyweightMessage = document.getElementById("bodyweight-message");
 const bodyweightLatest = document.getElementById("bodyweight-latest");
 const bodyweightChart = document.getElementById("bodyweight-chart");
+const bodyweightGoalForm = document.getElementById("bodyweight-goal-form");
+const bodyweightGoalInput = document.getElementById("bodyweight-goal");
+const bodyweightGoalMessage = document.getElementById("bodyweight-goal-message");
+const bodyweightGoalClear = document.getElementById("bodyweight-goal-clear");
 const coachCard = document.getElementById("coach");
 const todaySetsList = document.getElementById("today-sets");
 const storageError = document.getElementById("storage-error");
@@ -76,6 +80,7 @@ let pendingImport = null;
 
 let allSets = [];
 let bodyweights = [];
+let bodyweightGoal = null;
 let profile = null;
 let program = [];
 let workoutPositions = []; // where each training day sits in `program`; recovery entries are left out
@@ -1225,6 +1230,10 @@ function renderBodyweight() {
     bodyweightLatest.textContent = shown.date === null ? `${shown.weight} lb (from your setup)` : `Last: ${shown.weight} lb on ${shown.date}`;
   }
   bodyweightChart.replaceChildren(...renderBodyweightChart());
+  bodyweightGoalClear.hidden = bodyweightGoal === null;
+  if (bodyweightGoal !== null && bodyweights.length === 0) {
+    showBodyweightGoalMessage(`Goal: ${bodyweightGoal} lb. Add a weigh-in to see it on your chart.`, false);
+  }
 }
 
 // More room on the left than the Goals chart, for the weight scale.
@@ -1233,7 +1242,7 @@ const BODYWEIGHT_CHART = { width: 300, height: 150, left: 36, right: 12, top: 10
 // A line of your weight by date, with a weight scale down the side and dates along the bottom. Returns the
 // elements to show: nothing with no weigh-ins, and a single dot with a hint when there is only one day.
 function renderBodyweightChart() {
-  const points = bodyweightChartPoints(bodyweights);
+  const points = bodyweightChartPoints(bodyweights, bodyweightGoal);
   if (points.length === 0) {
     return [];
   }
@@ -1246,13 +1255,14 @@ function renderBodyweightChart() {
   const last = points[points.length - 1];
 
   const svg = svgElement("svg", { viewBox: `0 0 ${frame.width} ${frame.height}`, class: "goal-chart", role: "img" });
-  svg.setAttribute("aria-label", `Bodyweight: ${first.weight} lb on ${first.date}, ${last.weight} lb on ${last.date}`);
+  const goalText = bodyweightGoal === null ? "" : `, goal ${bodyweightGoal} lb`;
+  svg.setAttribute("aria-label", `Bodyweight: ${first.weight} lb on ${first.date}, ${last.weight} lb on ${last.date}${goalText}`);
   const addLabel = (text, x, y, anchor) => {
     const label = svgElement("text", { x, y, class: "chart-label", "text-anchor": anchor });
     label.textContent = text;
     svg.append(label);
   };
-  for (const mark of bodyweightScale(bodyweights)) {
+  for (const mark of bodyweightScale(bodyweights, bodyweightGoal)) {
     svg.append(svgElement("line", { x1: frame.left, x2: frame.width - frame.right, y1: toY(mark.y), y2: toY(mark.y), class: "chart-grid" }));
     addLabel(mark.weight, frame.left - 5, toY(mark.y) + 4, "end");
   }
@@ -1262,6 +1272,13 @@ function renderBodyweightChart() {
   for (const mark of bodyweightDateMarks(bodyweights)) {
     const anchor = mark.x === 0 ? "start" : mark.x === 1 ? "end" : "middle";
     addLabel(shortDateLabel(mark.date, spansYears), toX(mark.x), frame.height - 8, anchor);
+  }
+  const goalY = bodyweightGoalY(bodyweights, bodyweightGoal);
+  if (goalY !== null) {
+    svg.append(svgElement("line", { x1: frame.left, x2: frame.width - frame.right, y1: toY(goalY), y2: toY(goalY), class: "chart-goal-line" }));
+    const goalLabel = svgElement("text", { x: frame.width - frame.right, y: Math.max(11, toY(goalY) - 5), class: "chart-label chart-goal-label", "text-anchor": "end" });
+    goalLabel.textContent = `Goal ${bodyweightGoal} lb`;
+    svg.append(goalLabel);
   }
   if (points.length > 1) {
     svg.append(svgElement("polyline", { points: points.map((point) => `${toX(point.x)},${toY(point.y)}`).join(" "), class: "chart-line" }));
@@ -1278,6 +1295,47 @@ function renderBodyweightChart() {
 function showBodyweightMessage(text, isError) {
   bodyweightMessage.textContent = text;
   bodyweightMessage.classList.toggle("error", isError);
+}
+
+function showBodyweightGoalMessage(text, isError) {
+  bodyweightGoalMessage.textContent = text;
+  bodyweightGoalMessage.classList.toggle("error", isError);
+}
+
+// Saves the goal (or clears it with null), then redraws the chart. Returns false if saving failed.
+function changeBodyweightGoal(goal) {
+  try {
+    saveBodyweightGoal(goal);
+    storageError.hidden = true;
+  } catch (error) {
+    showStorageError(error);
+    return false;
+  }
+  bodyweightGoal = goal;
+  renderBodyweight();
+  return true;
+}
+
+function handleBodyweightGoalSubmit(event) {
+  event.preventDefault();
+  const goal = parseBodyweight(bodyweightGoalInput.value);
+  if (Number.isNaN(goal)) {
+    showBodyweightGoalMessage(`Enter your goal as a number from ${MIN_BODYWEIGHT} to ${MAX_BODYWEIGHT} lb.`, true);
+    bodyweightGoalInput.focus();
+    return;
+  }
+  if (changeBodyweightGoal(goal)) {
+    bodyweightGoalInput.value = "";
+    if (bodyweights.length > 0) {
+      showBodyweightGoalMessage(`Goal set to ${goal} lb.`, false);
+    }
+  }
+}
+
+function handleBodyweightGoalClear() {
+  if (changeBodyweightGoal(null)) {
+    showBodyweightGoalMessage("Goal cleared.", false);
+  }
 }
 
 function handleBodyweightSubmit(event) {
@@ -1674,6 +1732,7 @@ function start() {
   try {
     allSets = loadSets();
     bodyweights = loadBodyweights();
+    bodyweightGoal = loadBodyweightGoal();
     profile = loadProfile();
     swaps = loadSwaps(todayString());
     shortToday = loadShortToday(todayString());
@@ -1705,6 +1764,8 @@ function start() {
   buildRestTimerCard();
   setForm.addEventListener("submit", handleSubmit);
   bodyweightForm.addEventListener("submit", handleBodyweightSubmit);
+  bodyweightGoalForm.addEventListener("submit", handleBodyweightGoalSubmit);
+  bodyweightGoalClear.addEventListener("click", handleBodyweightGoalClear);
   renderBodyweight();
   setupButton.addEventListener("click", openQuiz);
   injuriesButton.addEventListener("click", openInjuryEditor);

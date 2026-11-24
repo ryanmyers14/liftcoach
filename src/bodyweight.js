@@ -12,6 +12,11 @@ export function parseBodyweight(text) {
   return weight >= MIN_BODYWEIGHT && weight <= MAX_BODYWEIGHT ? Math.round(weight * 10) / 10 : NaN;
 }
 
+// A goal weight is a single number in the same range as a weigh-in.
+export function isSavedGoalWeight(value) {
+  return Number.isFinite(value) && value >= MIN_BODYWEIGHT && value <= MAX_BODYWEIGHT;
+}
+
 export function isSavedBodyweight(entry) {
   return (
     typeof entry === "object" &&
@@ -46,9 +51,13 @@ export function shownBodyweight(entries, quizWeight) {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// The weights the chart spans: your own range with a little room above and below, so small changes still show.
-function chartRange(entries) {
+// The weights the chart spans: your own range (and the goal, if there is one) with a little room above and
+// below, so small changes still show.
+function chartRange(entries, goal) {
   const weights = entries.map((entry) => entry.weight);
+  if (goal !== null) {
+    weights.push(goal);
+  }
   const lowest = Math.min(...weights);
   const highest = Math.max(...weights);
   const margin = Math.max(1, (highest - lowest) * 0.15);
@@ -57,11 +66,11 @@ function chartRange(entries) {
 
 // Where to draw each check-in, as fractions of the chart from 0 to 1: x runs left to right by date (a lone
 // point sits in the middle), y runs top to bottom, so a heavier weight is higher up.
-export function bodyweightChartPoints(entries) {
+export function bodyweightChartPoints(entries, goal = null) {
   if (entries.length === 0) {
     return [];
   }
-  const { top, range } = chartRange(entries);
+  const { top, range } = chartRange(entries, goal);
   const firstDay = Date.parse(entries[0].date);
   const days = (Date.parse(entries[entries.length - 1].date) - firstDay) / DAY_MS;
   return entries.map(({ date, weight }) => ({
@@ -77,11 +86,11 @@ const MAX_SCALE_MARKS = 4;
 
 // The weight marks down the side of the chart: round numbers (like 180 and 182) that fall inside the chart,
 // with y placed the same way as in bodyweightChartPoints. At most four, so they never crowd.
-export function bodyweightScale(entries) {
+export function bodyweightScale(entries, goal = null) {
   if (entries.length === 0) {
     return [];
   }
-  const { top, range } = chartRange(entries);
+  const { top, range } = chartRange(entries, goal);
   const bottom = top - range;
   const step = SCALE_STEPS.find((candidate) => Math.floor(top / candidate) - Math.ceil(bottom / candidate) + 1 <= MAX_SCALE_MARKS) ?? 100;
   const marks = [];
@@ -89,6 +98,16 @@ export function bodyweightScale(entries) {
     marks.push({ weight: n * step, y: (top - n * step) / range });
   }
   return marks;
+}
+
+// Where the goal line sits, placed the same way as the points (0 is the top of the chart), or null when there
+// is no goal or no weigh-in yet. The chart stretches to include the goal, so the line is always on it.
+export function bodyweightGoalY(entries, goal) {
+  if (entries.length === 0 || goal === null) {
+    return null;
+  }
+  const { top, range } = chartRange(entries, goal);
+  return (top - goal) / range;
 }
 
 // The dates along the bottom of the chart: the first day and the last, and the day halfway between when

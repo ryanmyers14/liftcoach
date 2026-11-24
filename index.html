@@ -98,15 +98,24 @@
       <ol id="today-sets" class="set-list"></ol>
     </section>
 
-    <form id="bodyweight-form" class="card" novalidate>
+    <section id="bodyweight-card" class="card">
       <h2>Bodyweight</h2>
       <p id="bodyweight-latest" class="plan-label"></p>
       <div id="bodyweight-chart"></div>
-      <label class="field-label" for="bodyweight">Today's weight (lb)</label>
-      <input id="bodyweight" class="text-input" type="text" inputmode="decimal" autocomplete="off" placeholder="180">
-      <p id="bodyweight-message" class="form-message" aria-live="polite"></p>
-      <button type="submit" class="btn-primary">Add weight</button>
-    </form>
+      <form id="bodyweight-form" novalidate>
+        <label class="field-label" for="bodyweight">Today's weight (lb)</label>
+        <input id="bodyweight" class="text-input" type="text" inputmode="decimal" autocomplete="off" placeholder="180">
+        <p id="bodyweight-message" class="form-message" aria-live="polite"></p>
+        <button type="submit" class="btn-primary">Add weight</button>
+      </form>
+      <form id="bodyweight-goal-form" class="goal-weight-form" novalidate>
+        <label class="field-label" for="bodyweight-goal">Goal weight (lb)</label>
+        <input id="bodyweight-goal" class="text-input" type="text" inputmode="decimal" autocomplete="off" placeholder="175">
+        <p id="bodyweight-goal-message" class="form-message" aria-live="polite"></p>
+        <button type="submit" class="btn-primary">Set goal</button>
+        <button id="bodyweight-goal-clear" type="button" class="btn-secondary" hidden>Clear goal</button>
+      </form>
+    </section>
 
     <section id="plan" class="card" hidden>
       <h2>Your plan</h2>
