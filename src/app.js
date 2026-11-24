@@ -1,4 +1,4 @@
-import { chartPoints, goalRows, loggedExercises, weightHistory } from "./goals.js";
+import { chartPoints, goalRows, loggedExercises, nextGoalOffer, reachEstimate, reachLines, weightHistory } from "./goals.js";
 import { lastSession, lastTimeText, suggestNext } from "./coach.js";
 import { MAX_LIFTS, estimatedMax, isMaxLift, latestMax, maxIsDue, maxRampSets, withNewMax } from "./maxes.js";
 import { MUSCLES, alternatesFor, repRangeFor, restFor, swapState, tempoFor } from "./exercises.js";
@@ -967,13 +967,14 @@ function svgElement(tag, attributes) {
 }
 
 // A line of the top weight from each session, with a dashed line at the goal. Returns the elements to show.
-function renderGoalChart(row) {
+// estimate: the date you would reach the goal at the coach's pace (see reachEstimate), or null.
+function renderGoalChart(row, estimate) {
   const history = weightHistory(row.exercise, allSets);
   if (history.length === 0) {
     return [coachLine("goal-status", `Your line starts when you log ${row.exercise}. Starting point: ${row.baseline} lb.`)];
   }
 
-  const { points, goalY, goalFar } = chartPoints(history, row.goal);
+  const { points, goalY, goalFar, reachPoint } = chartPoints(history, row.goal, estimate?.date ?? null);
   const plotWidth = CHART.width - CHART.left - CHART.right;
   const plotHeight = CHART.height - CHART.top - CHART.bottom;
   const at = ({ x, y }) => [CHART.left + x * plotWidth, CHART.top + y * plotHeight];
@@ -983,26 +984,39 @@ function renderGoalChart(row) {
 
   const svg = svgElement("svg", { viewBox: `0 0 ${CHART.width} ${CHART.height}`, class: "goal-chart", role: "img" });
   const first = history[0];
-  svg.setAttribute("aria-label", `${row.exercise}: ${first.weight} lb on ${first.date}, ${last.weight} lb on ${last.date}, goal ${row.goal} lb`);
+  const reachText = reachPoint === null ? "" : `, estimated to reach it around ${estimate.date}`;
+  svg.setAttribute("aria-label", `${row.exercise}: ${first.weight} lb on ${first.date}, ${last.weight} lb on ${last.date}, goal ${row.goal} lb${reachText}`);
   svg.append(svgElement("line", { x1: CHART.left, x2: CHART.width - CHART.right, y1: goalLineY, y2: goalLineY, class: "chart-goal-line" }));
   const goalLabel = svgElement("text", { x: CHART.left, y: Math.max(11, goalLineY - 5), class: "chart-label chart-goal-label" });
   goalLabel.textContent = `Goal ${row.goal} lb${goalFar ? " ↑" : ""}`;
   svg.append(goalLabel);
+  if (reachPoint !== null) {
+    const [reachX, reachY] = at(reachPoint);
+    svg.append(svgElement("line", { x1: lastX, y1: lastY, x2: reachX, y2: reachY, class: "chart-goal-path" }));
+    svg.append(svgElement("circle", { cx: reachX, cy: reachY, r: 4.5, class: "chart-goal-target" }));
+  }
   if (points.length > 1) {
     svg.append(svgElement("polyline", { points: points.map((point) => at(point).join(",")).join(" "), class: "chart-line" }));
   }
   for (const point of points) {
     svg.append(svgElement("circle", { cx: at(point)[0], cy: at(point)[1], r: 3.5, class: "chart-dot" }));
   }
-  const nowLabel = svgElement("text", { x: lastX, y: lastY + 16, class: "chart-label", "text-anchor": points.length > 1 ? "end" : "middle" });
+  // With the dotted path ahead, the weight label sits to the right of the last dot, under the path; otherwise it
+  // sits to the left of it, clear of the path and the line.
+  const nowLabel = svgElement("text", {
+    x: reachPoint !== null ? lastX + 6 : lastX,
+    y: lastY + 16,
+    class: "chart-label",
+    "text-anchor": reachPoint !== null ? "start" : points.length > 1 ? "end" : "middle",
+  });
   nowLabel.textContent = `${last.weight} lb`;
   svg.append(nowLabel);
   const startDate = svgElement("text", { x: CHART.left, y: CHART.height - 4, class: "chart-label" });
   startDate.textContent = first.date;
   svg.append(startDate);
-  if (points.length > 1) {
+  if (points.length > 1 || reachPoint !== null) {
     const endDate = svgElement("text", { x: CHART.width - CHART.right, y: CHART.height - 4, class: "chart-label", "text-anchor": "end" });
-    endDate.textContent = last.date;
+    endDate.textContent = reachPoint === null ? last.date : estimate.date;
     svg.append(endDate);
   }
   if (points.length === 1) {
@@ -1044,6 +1058,19 @@ function renderGoalNav(rows, index) {
 }
 
 // The chart, status line and Change goal button for the one exercise on show.
+// After a goal is reached: the coach's next goal, with a button to take it.
+function renderNextGoalOffer(row, nextGoal) {
+  const offer = document.createElement("div");
+  offer.className = "goal-offer";
+  const accept = document.createElement("button");
+  accept.type = "button";
+  accept.className = "btn-primary";
+  accept.textContent = `Accept ${nextGoal} lb goal`;
+  accept.addEventListener("click", () => setGoal(row.exercise, nextGoal));
+  offer.append(coachLine("goal-status", `Next goal from the coach: ${nextGoal} lb.`), accept);
+  return offer;
+}
+
 function renderGoalRow(row) {
   const status = row.reached
     ? `Goal reached: ${row.current} lb. Set a new one!`
@@ -1058,8 +1085,20 @@ function renderGoalRow(row) {
     document.getElementById("goal-input")?.focus();
   });
 
+  const nextGoal = nextGoalOffer(row, profile?.experience, MAX_WEIGHT);
+  if (nextGoal !== null) {
+    edit.textContent = "Type my own goal";
+  }
+  const today = todayString();
+  const estimate = row.reached ? null : reachEstimate({ exercise: row.exercise, current: row.current, goal: row.goal, sets: allSets, experience: profile?.experience, today });
   const body = document.createElement("div");
-  body.append(...renderGoalChart(row), coachLine(row.reached ? "goal-status goal-reached" : "goal-status", status), edit);
+  body.append(
+    ...renderGoalChart(row, estimate),
+    coachLine(row.reached ? "goal-status goal-reached" : "goal-status", status),
+    ...reachLines(estimate, today).map((line) => coachLine("goal-status", line)),
+    ...(nextGoal === null ? [] : [renderNextGoalOffer(row, nextGoal)]),
+    edit,
+  );
   if (editingGoal === row.exercise) {
     body.append(renderGoalEditor(row));
   }

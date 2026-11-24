@@ -1,8 +1,9 @@
 // Weight goals for each exercise. A goal is a target weight. Unless you set your own,
 // the suggested goal is a few of the coach's weight jumps above where you started, so it
 // stays put while you progress toward it.
+import { shortDateLabel } from "./bodyweight.js";
 import { incrementFor } from "./coach.js";
-import { isAccessory } from "./exercises.js";
+import { isAccessory, repRangeFor } from "./exercises.js";
 
 const JUMPS_TO_SUGGESTED_GOAL = 4;
 // How far above your start the goal sits, as a share of a beginner's: experienced lifters
@@ -40,6 +41,16 @@ export function suggestedGoal(exercise, baseline, experience) {
   }
   const share = GOAL_DISTANCE_BY_EXPERIENCE[experience] ?? GOAL_DISTANCE_BY_EXPERIENCE.beginner;
   return baseline + JUMPS_TO_SUGGESTED_GOAL * incrementFor(exercise, "beginner") * share;
+}
+
+// The next goal to offer once a goal is reached: the same distance above the weight you reached as a suggested goal
+// is above where you started. Null when the goal is not reached yet, or when the next goal would be past maxWeight.
+export function nextGoalOffer(row, experience, maxWeight) {
+  if (!row.reached) {
+    return null;
+  }
+  const next = suggestedGoal(row.exercise, row.current, experience);
+  return next > maxWeight ? null : next;
 }
 
 // Each exercise you have logged at least once, in the order you first logged it. Without a program
@@ -95,8 +106,11 @@ export function weightHistory(exercise, sets) {
 // x runs left to right by date (a lone point sits in the middle); y runs top to bottom, so a
 // heavier weight has a smaller y. When the goal is far above your weights (more than twice
 // the range you have covered), the chart is scaled to your own weights so the climb stays
-// visible, and the goal line sits at the top with goalFar set. Returns { points, goalY, goalFar }.
-export function chartPoints(history, goal) {
+// visible, and the goal line sits at the top with goalFar set. When reachDate (the estimated day
+// you reach the goal) is later than your last session, the dates stretch out to it and reachPoint
+// is where the goal sits on that day, at the right edge; otherwise reachPoint is null.
+// Returns { points, goalY, goalFar, reachPoint }.
+export function chartPoints(history, goal, reachDate = null) {
   const weights = history.map((entry) => entry.weight);
   const lowest = Math.min(...weights, goal);
   const highest = Math.max(...weights);
@@ -108,12 +122,83 @@ export function chartPoints(history, goal) {
   const yFor = (weight) => (high - weight) / (high - low);
 
   const firstDay = history.length === 0 ? 0 : Date.parse(history[0].date);
-  const days = history.length === 0 ? 0 : (Date.parse(history[history.length - 1].date) - firstDay) / DAY_MS;
+  const lastSessionDay = history.length === 0 ? 0 : Date.parse(history[history.length - 1].date);
+  const reaching = history.length > 0 && reachDate !== null && Date.parse(reachDate) > lastSessionDay;
+  const days = ((reaching ? Date.parse(reachDate) : lastSessionDay) - firstDay) / DAY_MS;
   const points = history.map(({ date, weight }) => ({
     date,
     weight,
     x: days === 0 ? 0.5 : (Date.parse(date) - firstDay) / DAY_MS / days,
     y: yFor(weight),
   }));
-  return { points, goalY: goalFar ? 0 : yFor(goal), goalFar };
+  const goalLineY = goalFar ? 0 : yFor(goal);
+  return { points, goalY: goalLineY, goalFar, reachPoint: reaching ? { x: 1, y: goalLineY } : null };
+}
+
+const RECENT_DAYS = 28;
+const MIN_SESSIONS_FOR_FREQUENCY = 3;
+const MAX_SESSIONS_PER_WEEK = 7;
+const MAX_ESTIMATE_DAYS = 365;
+
+// How many times a week you do the lift: the days you logged it in the last 28 days, divided by four weeks.
+// With fewer than three such days there is too little to go on, so it counts as once a week (assumed: true).
+function sessionsPerWeek(exercise, sets, today) {
+  const wanted = exercise.toLowerCase();
+  const todayDay = Date.parse(today);
+  const days = new Set(
+    sets
+      .filter((set) => {
+        const age = todayDay - Date.parse(set.date);
+        return set.exercise.toLowerCase() === wanted && age >= 0 && age < RECENT_DAYS * DAY_MS;
+      })
+      .map((set) => set.date),
+  );
+  return days.size < MIN_SESSIONS_FOR_FREQUENCY
+    ? { perWeek: 1, assumed: true }
+    : { perWeek: Math.min(days.size / (RECENT_DAYS / 7), MAX_SESSIONS_PER_WEEK), assumed: false };
+}
+
+// When you would reach a lift goal if you follow the coach: it adds one weight jump (incrementFor) after every
+// set reaches the top of the rep range, and you restart at the bottom, so each weight takes about
+// (top - bottom + 1) sessions. Sessions are turned into days using how often you do the lift. Returns
+// { jumps, increment, sessions, perWeek, assumed, days, date }, where date is null when it is more than a
+// year away, or null when you have already reached the goal.
+export function reachEstimate({ exercise, current, goal, sets, experience, today }) {
+  if (current >= goal) {
+    return null;
+  }
+  const increment = incrementFor(exercise, experience);
+  const [minReps, maxReps] = repRangeFor(exercise);
+  const jumps = Math.ceil((goal - current) / increment - 1e-9);
+  const sessions = jumps * (maxReps - minReps + 1);
+  const { perWeek, assumed } = sessionsPerWeek(exercise, sets, today);
+  const days = Math.ceil((sessions / perWeek) * 7);
+  const date = days > MAX_ESTIMATE_DAYS ? null : new Date(Date.parse(today) + days * DAY_MS).toISOString().slice(0, 10);
+  return { jumps, increment, sessions, perWeek, assumed, days, date };
+}
+
+function frequencyText(perWeek) {
+  if (perWeek === 1) {
+    return "once a week";
+  }
+  if (perWeek === 2) {
+    return "twice a week";
+  }
+  return perWeek > 1 ? `${Number(perWeek.toFixed(1))} times a week` : `once every ${Number((1 / perWeek).toFixed(1))} weeks`;
+}
+
+// What the goal card says about the estimate, as lines of text. Nothing when there is no estimate.
+export function reachLines(estimate, today) {
+  if (estimate === null) {
+    return [];
+  }
+  const { jumps, increment, sessions, perWeek, assumed, days, date } = estimate;
+  const first = `Coach's pace: ${jumps} ${jumps === 1 ? "jump" : "jumps"} of ${increment} lb, about ${sessions} ${sessions === 1 ? "session" : "sessions"}.`;
+  const frequency = assumed ? "Log it a few more times so I can see how often you train it. Until then I'm assuming once a week" : `You train it about ${frequencyText(perWeek)}`;
+  if (date === null) {
+    return [first, `${frequency}, so that is more than a year away at this pace.`];
+  }
+  const label = shortDateLabel(date, date.slice(0, 4) !== today.slice(0, 4));
+  const span = days < 14 ? `${days} days` : `${Math.round(days / 7)} weeks`;
+  return [first, `${frequency}, so you'd reach it around ${label} (${span}).`];
 }

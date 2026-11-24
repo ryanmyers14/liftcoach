@@ -723,6 +723,14 @@ button {
   margin-bottom: 12px;
 }
 
+.goal-offer {
+  margin: 8px 0;
+}
+
+.goal-offer .btn-primary {
+  margin-top: 8px;
+}
+
 .goal-weight-form {
   margin-top: 16px;
   padding-top: 12px;
