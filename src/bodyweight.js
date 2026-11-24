@@ -46,19 +46,22 @@ export function shownBodyweight(entries, quizWeight) {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Where to draw each check-in, as fractions of the chart from 0 to 1: x runs left to right by date (a lone
-// point sits in the middle), y runs top to bottom, so a heavier weight is higher up. The chart is scaled to
-// your own weights, with a little room above and below, so small changes still show.
-export function bodyweightChartPoints(entries) {
-  if (entries.length === 0) {
-    return [];
-  }
+// The weights the chart spans: your own range with a little room above and below, so small changes still show.
+function chartRange(entries) {
   const weights = entries.map((entry) => entry.weight);
   const lowest = Math.min(...weights);
   const highest = Math.max(...weights);
   const margin = Math.max(1, (highest - lowest) * 0.15);
-  const top = highest + margin;
-  const range = highest - lowest + 2 * margin;
+  return { top: highest + margin, range: highest - lowest + 2 * margin };
+}
+
+// Where to draw each check-in, as fractions of the chart from 0 to 1: x runs left to right by date (a lone
+// point sits in the middle), y runs top to bottom, so a heavier weight is higher up.
+export function bodyweightChartPoints(entries) {
+  if (entries.length === 0) {
+    return [];
+  }
+  const { top, range } = chartRange(entries);
   const firstDay = Date.parse(entries[0].date);
   const days = (Date.parse(entries[entries.length - 1].date) - firstDay) / DAY_MS;
   return entries.map(({ date, weight }) => ({
@@ -67,4 +70,52 @@ export function bodyweightChartPoints(entries) {
     x: days === 0 ? 0.5 : (Date.parse(date) - firstDay) / DAY_MS / days,
     y: (top - weight) / range,
   }));
+}
+
+const SCALE_STEPS = [0.5, 1, 2, 5, 10, 20, 50, 100];
+const MAX_SCALE_MARKS = 4;
+
+// The weight marks down the side of the chart: round numbers (like 180 and 182) that fall inside the chart,
+// with y placed the same way as in bodyweightChartPoints. At most four, so they never crowd.
+export function bodyweightScale(entries) {
+  if (entries.length === 0) {
+    return [];
+  }
+  const { top, range } = chartRange(entries);
+  const bottom = top - range;
+  const step = SCALE_STEPS.find((candidate) => Math.floor(top / candidate) - Math.ceil(bottom / candidate) + 1 <= MAX_SCALE_MARKS) ?? 100;
+  const marks = [];
+  for (let n = Math.ceil(bottom / step); n <= Math.floor(top / step); n++) {
+    marks.push({ weight: n * step, y: (top - n * step) / range });
+  }
+  return marks;
+}
+
+// The dates along the bottom of the chart: the first day and the last, and the day halfway between when
+// there are at least two days between them. A lone day sits in the middle, where its dot is.
+export function bodyweightDateMarks(entries) {
+  if (entries.length === 0) {
+    return [];
+  }
+  const firstDate = entries[0].date;
+  const lastDate = entries[entries.length - 1].date;
+  const days = (Date.parse(lastDate) - Date.parse(firstDate)) / DAY_MS;
+  if (days === 0) {
+    return [{ date: firstDate, x: 0.5 }];
+  }
+  const marks = [{ date: firstDate, x: 0 }, { date: lastDate, x: 1 }];
+  if (days >= 2) {
+    const halfway = Math.round(days / 2);
+    const date = new Date(Date.parse(firstDate) + halfway * DAY_MS).toISOString().slice(0, 10);
+    marks.splice(1, 0, { date, x: halfway / days });
+  }
+  return marks;
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// "2026-11-16" as "Nov 16", or "Nov 16, 2026" when the chart spans more than one year.
+export function shortDateLabel(date, withYear) {
+  const [year, month, day] = date.split("-").map(Number);
+  return `${MONTHS[month - 1]} ${day}${withYear ? `, ${year}` : ""}`;
 }

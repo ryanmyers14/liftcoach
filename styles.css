@@ -708,6 +708,17 @@ button {
   fill: var(--accent);
 }
 
+.chart-grid {
+  stroke: var(--text-muted);
+  stroke-opacity: 0.25;
+  stroke-width: 1;
+}
+
+.chart-axis {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
 .chart-goal-line {
   stroke: var(--ok);
   stroke-width: 1.5;

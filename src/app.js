@@ -8,7 +8,7 @@ import { extendedEnd, formatClock, restEnd, secondsLeft } from "./rest.js";
 import { parseNumber } from "./numbers.js";
 import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
-import { MAX_BODYWEIGHT, MIN_BODYWEIGHT, bodyweightChartPoints, parseBodyweight, shownBodyweight, withBodyweight } from "./bodyweight.js";
+import { MAX_BODYWEIGHT, MIN_BODYWEIGHT, bodyweightChartPoints, bodyweightDateMarks, bodyweightScale, parseBodyweight, shortDateLabel, shownBodyweight, withBodyweight } from "./bodyweight.js";
 import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
 import { setupCalendar } from "./calendar-view.js";
 import { setupHistory } from "./history-view.js";
@@ -1227,41 +1227,51 @@ function renderBodyweight() {
   bodyweightChart.replaceChildren(...renderBodyweightChart());
 }
 
-// A line of your weight by date, like the line on the Goals card. Returns the elements to show: nothing with
-// no weigh-ins, and a single dot with a hint when there is only one day.
+// More room on the left than the Goals chart, for the weight scale.
+const BODYWEIGHT_CHART = { width: 300, height: 150, left: 36, right: 12, top: 10, bottom: 26 };
+
+// A line of your weight by date, with a weight scale down the side and dates along the bottom. Returns the
+// elements to show: nothing with no weigh-ins, and a single dot with a hint when there is only one day.
 function renderBodyweightChart() {
   const points = bodyweightChartPoints(bodyweights);
   if (points.length === 0) {
     return [];
   }
-  const plotWidth = CHART.width - CHART.left - CHART.right;
-  const plotHeight = CHART.height - CHART.top - CHART.bottom;
-  const at = ({ x, y }) => [CHART.left + x * plotWidth, CHART.top + y * plotHeight];
+  const frame = BODYWEIGHT_CHART;
+  const plotWidth = frame.width - frame.left - frame.right;
+  const plotHeight = frame.height - frame.top - frame.bottom;
+  const toX = (x) => frame.left + x * plotWidth;
+  const toY = (y) => frame.top + y * plotHeight;
   const first = points[0];
   const last = points[points.length - 1];
 
-  const svg = svgElement("svg", { viewBox: `0 0 ${CHART.width} ${CHART.height}`, class: "goal-chart", role: "img" });
+  const svg = svgElement("svg", { viewBox: `0 0 ${frame.width} ${frame.height}`, class: "goal-chart", role: "img" });
   svg.setAttribute("aria-label", `Bodyweight: ${first.weight} lb on ${first.date}, ${last.weight} lb on ${last.date}`);
-  if (points.length > 1) {
-    svg.append(svgElement("polyline", { points: points.map((point) => at(point).join(",")).join(" "), class: "chart-line" }));
-  }
-  for (const point of points) {
-    svg.append(svgElement("circle", { cx: at(point)[0], cy: at(point)[1], r: 3.5, class: "chart-dot" }));
-  }
   const addLabel = (text, x, y, anchor) => {
     const label = svgElement("text", { x, y, class: "chart-label", "text-anchor": anchor });
     label.textContent = text;
     svg.append(label);
   };
+  for (const mark of bodyweightScale(bodyweights)) {
+    svg.append(svgElement("line", { x1: frame.left, x2: frame.width - frame.right, y1: toY(mark.y), y2: toY(mark.y), class: "chart-grid" }));
+    addLabel(mark.weight, frame.left - 5, toY(mark.y) + 4, "end");
+  }
+  svg.append(svgElement("line", { x1: frame.left, x2: frame.left, y1: frame.top, y2: frame.height - frame.bottom, class: "chart-axis" }));
+  svg.append(svgElement("line", { x1: frame.left, x2: frame.width - frame.right, y1: frame.height - frame.bottom, y2: frame.height - frame.bottom, class: "chart-axis" }));
+  const spansYears = first.date.slice(0, 4) !== last.date.slice(0, 4);
+  for (const mark of bodyweightDateMarks(bodyweights)) {
+    const anchor = mark.x === 0 ? "start" : mark.x === 1 ? "end" : "middle";
+    addLabel(shortDateLabel(mark.date, spansYears), toX(mark.x), frame.height - 8, anchor);
+  }
+  if (points.length > 1) {
+    svg.append(svgElement("polyline", { points: points.map((point) => `${toX(point.x)},${toY(point.y)}`).join(" "), class: "chart-line" }));
+  }
+  for (const point of points) {
+    svg.append(svgElement("circle", { cx: toX(point.x), cy: toY(point.y), r: 3.5, class: "chart-dot" }));
+  }
   if (points.length === 1) {
-    addLabel(`${last.weight} lb`, at(last)[0], at(last)[1] - 8, "middle");
-    addLabel(last.date, CHART.left, CHART.height - 4, "start");
     return [svg, coachLine("goal-status", "One day so far. Add your weight on another day to draw your line.")];
   }
-  addLabel(`${first.weight} lb`, at(first)[0], at(first)[1] - 8, "start");
-  addLabel(`${last.weight} lb`, at(last)[0], at(last)[1] - 8, "end");
-  addLabel(first.date, CHART.left, CHART.height - 4, "start");
-  addLabel(last.date, CHART.width - CHART.right, CHART.height - 4, "end");
   return [svg];
 }
 
