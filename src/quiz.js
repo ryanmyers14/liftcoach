@@ -1,6 +1,6 @@
 // The one-time setup quiz: experience, schedule, goal, equipment, injuries,
 // bodyweight, and current working weights.
-import { parseNumber } from "./numbers.js";
+import { parseNumber, parseWeight } from "./numbers.js";
 import {
   buildProgram,
   EQUIPMENT,
@@ -67,7 +67,7 @@ function optionalNumber(input, { max, wholeNumber }) {
   if (text === "") {
     return null;
   }
-  const value = parseNumber(text);
+  const value = wholeNumber ? parseNumber(text) : parseWeight(text);
   const valid = Number.isFinite(value) && value > 0 && value <= max && (!wholeNumber || Number.isInteger(value));
   return valid ? value : NaN;
 }

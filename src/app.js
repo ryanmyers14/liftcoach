@@ -5,7 +5,7 @@ import { MUSCLES, alternatesFor, repRangeFor, restFor, swapState, tempoFor } fro
 import { buildProgram, startDayIndex, startingWeights, weeklyMuscleSets, withDefaults } from "./program.js";
 import { RECOVERY_CHECKLIST, alternateStretchesFor, muscleRecovery, previousWorkout, stretchNamed, stretchesFor, withRecoveryDays } from "./recovery.js";
 import { extendedEnd, formatClock, restEnd, secondsLeft } from "./rest.js";
-import { parseNumber } from "./numbers.js";
+import { parseNumber, parseWeight } from "./numbers.js";
 import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
 import { MAX_BODYWEIGHT, MIN_BODYWEIGHT, bodyweightChartPoints, bodyweightDateMarks, bodyweightGoalY, bodyweightScale, parseBodyweight, shortDateLabel, shownBodyweight, withBodyweight } from "./bodyweight.js";
@@ -939,7 +939,7 @@ function renderGoalEditor(row) {
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const weight = parseNumber(input.value);
+    const weight = parseWeight(input.value);
     if (!Number.isFinite(weight) || weight <= 0 || weight > MAX_WEIGHT) {
       message.textContent = `Enter a weight between 1 and ${MAX_WEIGHT} lb.`;
       input.focus();
@@ -1178,7 +1178,7 @@ function renderMaxRow(exercise) {
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const weight = parseNumber(input.value);
+    const weight = parseWeight(input.value);
     if (!Number.isFinite(weight) || weight <= 0 || weight > MAX_WEIGHT) {
       message.textContent = `Enter a weight between 1 and ${MAX_WEIGHT} lb.`;
       message.classList.add("error");
@@ -1413,7 +1413,7 @@ function deleteSet(id) {
 function handleSubmit(event) {
   event.preventDefault();
   const exercise = currentExercise();
-  const weight = parseNumber(weightInput.value);
+  const weight = parseWeight(weightInput.value);
   const reps = parseNumber(repsInput.value);
 
   if (exercise === "") {
