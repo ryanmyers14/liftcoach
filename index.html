@@ -102,6 +102,7 @@
       <h2>Bodyweight</h2>
       <p id="bodyweight-latest" class="plan-label"></p>
       <div id="bodyweight-chart"></div>
+      <div id="bodyweight-goal-summary"></div>
       <form id="bodyweight-form" novalidate>
         <label class="field-label" for="bodyweight">Today's weight (lb)</label>
         <input id="bodyweight" class="text-input" type="text" inputmode="decimal" autocomplete="off" placeholder="180">
@@ -111,6 +112,8 @@
       <form id="bodyweight-goal-form" class="goal-weight-form" novalidate>
         <label class="field-label" for="bodyweight-goal">Goal weight (lb)</label>
         <input id="bodyweight-goal" class="text-input" type="text" inputmode="decimal" autocomplete="off" placeholder="175">
+        <label class="field-label" for="bodyweight-goal-date">Target date (optional)</label>
+        <input id="bodyweight-goal-date" class="text-input" type="date">
         <p id="bodyweight-goal-message" class="form-message" aria-live="polite"></p>
         <button type="submit" class="btn-primary">Set goal</button>
         <button id="bodyweight-goal-clear" type="button" class="btn-secondary" hidden>Clear goal</button>

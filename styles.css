@@ -719,6 +719,10 @@ button {
   stroke-width: 1;
 }
 
+#bodyweight-goal-summary {
+  margin-bottom: 12px;
+}
+
 .goal-weight-form {
   margin-top: 16px;
   padding-top: 12px;
@@ -739,6 +743,19 @@ button {
 .chart-label {
   fill: var(--text-muted);
   font-size: 11px;
+}
+
+.chart-goal-path {
+  stroke: var(--ok);
+  stroke-width: 2;
+  stroke-dasharray: 2 4;
+  stroke-linecap: round;
+}
+
+.chart-goal-target {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 2;
 }
 
 .chart-goal-label {

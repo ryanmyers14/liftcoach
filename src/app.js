@@ -8,7 +8,7 @@ import { extendedEnd, formatClock, restEnd, secondsLeft } from "./rest.js";
 import { parseNumber, parseWeight } from "./numbers.js";
 import { startQuiz } from "./quiz.js";
 import { renderBodyMap } from "./bodymap.js";
-import { MAX_BODYWEIGHT, MIN_BODYWEIGHT, bodyweightChartPoints, bodyweightDateMarks, bodyweightGoalY, bodyweightScale, parseBodyweight, shortDateLabel, shownBodyweight, withBodyweight } from "./bodyweight.js";
+import { MAX_BODYWEIGHT, MIN_BODYWEIGHT, bodyweightChartPoints, bodyweightDateMarks, bodyweightGoalPoint, bodyweightGoalY, bodyweightScale, goalSummaryLines, isSavedGoalDate, parseBodyweight, shortDateLabel, shownBodyweight, withBodyweight } from "./bodyweight.js";
 import { applyBackup, backupFileName, buildBackup, parseBackup } from "./backup.js";
 import { setupCalendar } from "./calendar-view.js";
 import { setupHistory } from "./history-view.js";
@@ -22,7 +22,7 @@ import { currentStreak, streakText } from "./streak.js";
 import { setupThemeToggle } from "./theme.js";
 import { tutorialFor } from "./tutorials.js";
 import { generalWarmup, warmupSets } from "./warmup.js";
-import { loadBodyweightGoal, loadBodyweights, loadGoals, loadMaxes, loadProfile, loadRecoveryChecks, loadRecoveryDates, loadSets, loadSavedSwaps, loadShortDays, loadShortToday, loadSkips, loadSwaps, newSetId, saveBodyweightGoal, saveBodyweights, saveGoals, saveMaxes, saveProfile, saveRecoveryChecks, saveRecoveryDates, saveSavedSwaps, saveSets, saveShortDays, saveShortToday, saveSkips, saveSwaps, SETS_KEY, todayString } from "./storage.js";
+import { loadBodyweightGoal, loadBodyweightGoalDate, loadBodyweights, loadGoals, loadMaxes, loadProfile, loadRecoveryChecks, loadRecoveryDates, loadSets, loadSavedSwaps, loadShortDays, loadShortToday, loadSkips, loadSwaps, newSetId, saveBodyweightGoal, saveBodyweightGoalDate, saveBodyweights, saveGoals, saveMaxes, saveProfile, saveRecoveryChecks, saveRecoveryDates, saveSavedSwaps, saveSets, saveShortDays, saveShortToday, saveSkips, saveSwaps, SETS_KEY, todayString } from "./storage.js";
 
 // The service worker keeps browsers from running old copies of the app after an update.
 if ("serviceWorker" in navigator) {
@@ -48,6 +48,8 @@ const bodyweightLatest = document.getElementById("bodyweight-latest");
 const bodyweightChart = document.getElementById("bodyweight-chart");
 const bodyweightGoalForm = document.getElementById("bodyweight-goal-form");
 const bodyweightGoalInput = document.getElementById("bodyweight-goal");
+const bodyweightGoalDateInput = document.getElementById("bodyweight-goal-date");
+const bodyweightGoalSummary = document.getElementById("bodyweight-goal-summary");
 const bodyweightGoalMessage = document.getElementById("bodyweight-goal-message");
 const bodyweightGoalClear = document.getElementById("bodyweight-goal-clear");
 const coachCard = document.getElementById("coach");
@@ -81,6 +83,7 @@ let pendingImport = null;
 let allSets = [];
 let bodyweights = [];
 let bodyweightGoal = null;
+let bodyweightGoalDate = null;
 let profile = null;
 let program = [];
 let workoutPositions = []; // where each training day sits in `program`; recovery entries are left out
@@ -1231,9 +1234,12 @@ function renderBodyweight() {
   }
   bodyweightChart.replaceChildren(...renderBodyweightChart());
   bodyweightGoalClear.hidden = bodyweightGoal === null;
+  bodyweightGoalDateInput.min = todayString();
+  const summary = goalSummaryLines({ goal: bodyweightGoal, goalDate: bodyweightGoalDate, entries: bodyweights, today: todayString() });
   if (bodyweightGoal !== null && bodyweights.length === 0) {
-    showBodyweightGoalMessage(`Goal: ${bodyweightGoal} lb. Add a weigh-in to see it on your chart.`, false);
+    summary.push("Add a weigh-in to see your goal on the chart.");
   }
+  bodyweightGoalSummary.replaceChildren(...summary.map((line) => coachLine("goal-status", line)));
 }
 
 // More room on the left than the Goals chart, for the weight scale.
@@ -1242,7 +1248,7 @@ const BODYWEIGHT_CHART = { width: 300, height: 150, left: 36, right: 12, top: 10
 // A line of your weight by date, with a weight scale down the side and dates along the bottom. Returns the
 // elements to show: nothing with no weigh-ins, and a single dot with a hint when there is only one day.
 function renderBodyweightChart() {
-  const points = bodyweightChartPoints(bodyweights, bodyweightGoal);
+  const points = bodyweightChartPoints(bodyweights, bodyweightGoal, bodyweightGoalDate);
   if (points.length === 0) {
     return [];
   }
@@ -1255,7 +1261,7 @@ function renderBodyweightChart() {
   const last = points[points.length - 1];
 
   const svg = svgElement("svg", { viewBox: `0 0 ${frame.width} ${frame.height}`, class: "goal-chart", role: "img" });
-  const goalText = bodyweightGoal === null ? "" : `, goal ${bodyweightGoal} lb`;
+  const goalText = bodyweightGoal === null ? "" : `, goal ${bodyweightGoal} lb${bodyweightGoalDate === null ? "" : ` by ${bodyweightGoalDate}`}`;
   svg.setAttribute("aria-label", `Bodyweight: ${first.weight} lb on ${first.date}, ${last.weight} lb on ${last.date}${goalText}`);
   const addLabel = (text, x, y, anchor) => {
     const label = svgElement("text", { x, y, class: "chart-label", "text-anchor": anchor });
@@ -1268,17 +1274,30 @@ function renderBodyweightChart() {
   }
   svg.append(svgElement("line", { x1: frame.left, x2: frame.left, y1: frame.top, y2: frame.height - frame.bottom, class: "chart-axis" }));
   svg.append(svgElement("line", { x1: frame.left, x2: frame.width - frame.right, y1: frame.height - frame.bottom, y2: frame.height - frame.bottom, class: "chart-axis" }));
-  const spansYears = first.date.slice(0, 4) !== last.date.slice(0, 4);
-  for (const mark of bodyweightDateMarks(bodyweights)) {
+  const dateMarks = bodyweightDateMarks(bodyweights, bodyweightGoalDate);
+  const spansYears = dateMarks[0].date.slice(0, 4) !== dateMarks[dateMarks.length - 1].date.slice(0, 4);
+  for (const mark of dateMarks) {
     const anchor = mark.x === 0 ? "start" : mark.x === 1 ? "end" : "middle";
     addLabel(shortDateLabel(mark.date, spansYears), toX(mark.x), frame.height - 8, anchor);
   }
   const goalY = bodyweightGoalY(bodyweights, bodyweightGoal);
   if (goalY !== null) {
     svg.append(svgElement("line", { x1: frame.left, x2: frame.width - frame.right, y1: toY(goalY), y2: toY(goalY), class: "chart-goal-line" }));
-    const goalLabel = svgElement("text", { x: frame.width - frame.right, y: Math.max(11, toY(goalY) - 5), class: "chart-label chart-goal-label", "text-anchor": "end" });
+    // With a target date the dotted path ends at the right edge, so the label moves to the left to stay clear of it.
+    const labelOnLeft = bodyweightGoalPoint(bodyweights, bodyweightGoal, bodyweightGoalDate) !== null;
+    const goalLabel = svgElement("text", {
+      x: labelOnLeft ? frame.left + 4 : frame.width - frame.right,
+      y: Math.max(11, toY(goalY) - 5),
+      class: "chart-label chart-goal-label",
+      "text-anchor": labelOnLeft ? "start" : "end",
+    });
     goalLabel.textContent = `Goal ${bodyweightGoal} lb`;
     svg.append(goalLabel);
+  }
+  const target = bodyweightGoalPoint(bodyweights, bodyweightGoal, bodyweightGoalDate);
+  if (target !== null) {
+    svg.append(svgElement("line", { x1: toX(last.x), y1: toY(last.y), x2: toX(target.x), y2: toY(target.y), class: "chart-goal-path" }));
+    svg.append(svgElement("circle", { cx: toX(target.x), cy: toY(target.y), r: 4.5, class: "chart-goal-target" }));
   }
   if (points.length > 1) {
     svg.append(svgElement("polyline", { points: points.map((point) => `${toX(point.x)},${toY(point.y)}`).join(" "), class: "chart-line" }));
@@ -1302,16 +1321,19 @@ function showBodyweightGoalMessage(text, isError) {
   bodyweightGoalMessage.classList.toggle("error", isError);
 }
 
-// Saves the goal (or clears it with null), then redraws the chart. Returns false if saving failed.
-function changeBodyweightGoal(goal) {
+// Saves the goal and its target date (both null clears the goal), then redraws the chart. Returns false if
+// saving failed.
+function changeBodyweightGoal(goal, goalDate) {
   try {
     saveBodyweightGoal(goal);
+    saveBodyweightGoalDate(goalDate);
     storageError.hidden = true;
   } catch (error) {
     showStorageError(error);
     return false;
   }
   bodyweightGoal = goal;
+  bodyweightGoalDate = goalDate;
   renderBodyweight();
   return true;
 }
@@ -1324,16 +1346,21 @@ function handleBodyweightGoalSubmit(event) {
     bodyweightGoalInput.focus();
     return;
   }
-  if (changeBodyweightGoal(goal)) {
+  const goalDate = bodyweightGoalDateInput.value === "" ? null : bodyweightGoalDateInput.value;
+  if (goalDate !== null && (!isSavedGoalDate(goalDate) || goalDate < todayString())) {
+    showBodyweightGoalMessage("Pick a target date from today on, or leave it blank.", true);
+    bodyweightGoalDateInput.focus();
+    return;
+  }
+  if (changeBodyweightGoal(goal, goalDate)) {
     bodyweightGoalInput.value = "";
-    if (bodyweights.length > 0) {
-      showBodyweightGoalMessage(`Goal set to ${goal} lb.`, false);
-    }
+    bodyweightGoalDateInput.value = "";
+    showBodyweightGoalMessage(goalDate === null ? `Goal set to ${goal} lb.` : `Goal set to ${goal} lb by ${goalDate}.`, false);
   }
 }
 
 function handleBodyweightGoalClear() {
-  if (changeBodyweightGoal(null)) {
+  if (changeBodyweightGoal(null, null)) {
     showBodyweightGoalMessage("Goal cleared.", false);
   }
 }
@@ -1733,6 +1760,7 @@ function start() {
     allSets = loadSets();
     bodyweights = loadBodyweights();
     bodyweightGoal = loadBodyweightGoal();
+    bodyweightGoalDate = bodyweightGoal === null ? null : loadBodyweightGoalDate();
     profile = loadProfile();
     swaps = loadSwaps(todayString());
     shortToday = loadShortToday(todayString());
