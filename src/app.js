@@ -1,5 +1,5 @@
 import { chartPoints, goalRows, loggedExercises, nextGoalOffer, reachEstimate, reachLines, weightHistory } from "./goals.js";
-import { lastSession, lastTimeText, suggestNext } from "./coach.js";
+import { lastSession, lastTimeText, suggestNext, workingWeightToday } from "./coach.js";
 import { MAX_LIFTS, estimatedMax, isMaxLift, latestMax, maxIsDue, maxRampSets, withNewMax } from "./maxes.js";
 import { MUSCLES, alternatesFor, repRangeFor, restFor, swapState, tempoFor } from "./exercises.js";
 import { buildProgram, startDayIndex, startingWeights, weeklyMuscleSets, withDefaults } from "./program.js";
@@ -805,8 +805,10 @@ function renderTutorial() {
 }
 
 function renderWarmup() {
-  const advice = currentExercise() === "" ? null : coachAdvice(currentExercise());
-  const sets = advice === null ? [] : warmupSets(currentExercise(), advice.suggestion.weight);
+  const exercise = currentExercise();
+  const startingWeight = exercise === "" ? null : (startingAdvice(exercise)?.suggestion.weight ?? null);
+  const workingWeight = exercise === "" ? null : workingWeightToday(allSets, exercise, todayString(), profile?.experience, startingWeight);
+  const sets = workingWeight === null ? [] : warmupSets(exercise, workingWeight);
   warmupCard.replaceChildren();
   warmupCard.hidden = sets.length === 0;
   if (sets.length === 0) {
@@ -825,7 +827,7 @@ function renderWarmup() {
   }
   const note = document.createElement("p");
   note.className = "empty";
-  note.textContent = `Easy sets, then your working sets at ${advice.suggestion.weight} lb. Don't log these.`;
+  note.textContent = `Easy sets, then your working sets at ${workingWeight} lb. Don't log these.`;
   warmupCard.append(heading, list, note);
 }
 

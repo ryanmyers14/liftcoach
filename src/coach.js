@@ -56,6 +56,15 @@ export function lastSession(sets, exercise, today) {
   return { date, sets: earlier.filter((set) => set.date === date) };
 }
 
+// The weight you are working at today, which stays the same all session: what the coach suggested from your last
+// session before today, or startingWeight (the setup quiz's estimate, or null) when you have no earlier session.
+// Sets logged today are left out on purpose, because one set at the top of the rep range would already say "add
+// weight" for next time, while you still have sets to do at today's weight.
+export function workingWeightToday(sets, exercise, today, experience, startingWeight) {
+  const session = lastSession(sets, exercise, today);
+  return session === null ? startingWeight : suggestNext(exercise, session.sets, experience).weight;
+}
+
 // For example "Last time (Oct 12): 185 × 8, 185 × 7".
 export function lastTimeText(session) {
   const [year, month, day] = session.date.split("-").map(Number);
